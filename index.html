@@ -56,7 +56,7 @@ body.piano #snd{display:none}
 #a_tiles{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:420px}
 .tile{width:min(64px,15vw);height:min(64px,15vw);border:3px solid #CDB8EE;border-radius:16px;background:#fff;font-size:min(38px,9vw);font-weight:800;color:#5B3A8E;box-shadow:0 4px 0 #CDB8EE;cursor:pointer;font-family:inherit}
 .tile.used{visibility:hidden}.tile.no{animation:shake .35s;border-color:#E5484D;color:#E5484D}.tile.pulse{animation:pulse 1s infinite;border-color:#FFD23F}
-.b6{background:#C0569A}
+.b6{background:#C0569A}.b7{background:#3A6FD8}
 #newrec{color:#3DA35D;font-weight:800;font-size:20px}
 </style>
 </head>
@@ -72,6 +72,7 @@ body.piano #snd{display:none}
   <button class="btn b3" onclick="start('atrapa')">🍉 Atrapa la lluvia<small>Mueve el dedo · Récord: <span id="r_atrapa">0</span></small></button>
   <button class="btn b4" onclick="start('leer')">📖 Lee con Capijuli<small>Toca la palabra · Récord: <span id="r_leer">0</span></small></button>
   <button class="btn b6" onclick="start('arma')">🔤 Arma la palabra<small>Toca las letras en orden · Récord: <span id="r_arma">0</span></small></button>
+  <button class="btn b7" onclick="start('spell')">🇺🇸 Spelling en inglés<small>Tap the letters · Récord: <span id="r_spell">0</span></small></button>
   <button class="btn b5" onclick="start('piano')">🎹 Piano con Capijuli<small>Sigue las teclas de colores · Récord: <span id="r_piano">0</span></small></button>
 </div>
 
@@ -446,26 +447,29 @@ const LN={a:'a',b:'be',c:'ce',d:'de',e:'e',f:'efe',g:'ge',h:'hache',i:'i',j:'jot
 const base=ch=>({'á':'a','é':'e','í':'i','ó':'o','ú':'u'}[ch]||ch);
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 let sayId=0;
-let VOICE=null;
-function rankVoices(){try{const vs=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang));if(!vs.length)return;
+let VOICE=null,VOICE_EN=null;
+function rankEn(){try{const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));if(!vs.length)return;
+  const sc=v=>{const n=(v.name||'').toLowerCase();let k=0;if(/us/i.test(v.lang))k+=3;if(/natural|neural|enhanced|premium|siri|online/.test(n))k+=6;if(/google/.test(n))k+=4;if(/samantha|ava|allison|aria|jenny|zira/.test(n))k+=2;if(/compact|eloquence|grandma|grandpa|rocko|shelley|flo|reed|sandy|eddy|albert|bad news|bells|boing|bubbles|cellos|whisper|zarvox|trinoids|jester|organ|superstar|wobble|junior|ralph|kathy|fred/.test(n))k-=6;return k;};
+  VOICE_EN=vs.sort((a,b)=>sc(b)-sc(a))[0];}catch(e){}}
+function rankVoices(){rankEn();try{const vs=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang));if(!vs.length)return;
   const sc=v=>{const n=(v.name||'').toLowerCase();let k=0;if(/(mx|us|419)/i.test(v.lang))k+=3;if(/natural|neural|enhanced|premium|mejorad|siri|online/.test(n))k+=6;if(/google/.test(n))k+=4;if(/paulina|m[oó]nica|dalia|marisol|sabina|helena|elvira|jorge|juan/.test(n))k+=2;if(/compact|eloquence|grandma|grandpa|rocko|shelley|flo|reed|sandy|eddy/.test(n))k-=5;return k;};
   VOICE=vs.sort((a,b)=>sc(b)-sc(a))[0];}catch(e){}}
 try{rankVoices();speechSynthesis.onvoiceschanged=rankVoices;}catch(e){}
-function pickVoice(){if(!VOICE)rankVoices();return VOICE;}
+function pickVoice(lang){if(!VOICE||!VOICE_EN)rankVoices();return lang==='en'?VOICE_EN:VOICE;}
 function say(parts,done){
   const id=++sayId;try{speechSynthesis.cancel();}catch(e){}
   if(!soundOn||!window.speechSynthesis){parts.forEach(p=>Array.isArray(p)&&p[1]&&p[1]());done&&setTimeout(done,600);return;}
   let i=0;
   const next=()=>{if(id!==sayId)return;if(i>=parts.length){done&&done();return;}
-    const p=parts[i++],txt=Array.isArray(p)?p[0]:p,fn=Array.isArray(p)?p[1]:null;let fired=false;
+    const p=parts[i++],txt=Array.isArray(p)?p[0]:p,fn=Array.isArray(p)?p[1]:null,lg=Array.isArray(p)?p[2]:null;let fired=false;
     const go=()=>{if(fired||id!==sayId)return;fired=true;setTimeout(next,120);};
-    try{const u=new SpeechSynthesisUtterance(txt);const v=pickVoice();u.lang=v?v.lang:'es-MX';if(v)u.voice=v;u.rate=fn?.85:.93;u.pitch=1.08;u.onend=go;u.onerror=go;if(fn)fn();speechSynthesis.speak(u);setTimeout(go,900+txt.length*110);}catch(e){go();}};
+    try{const u=new SpeechSynthesisUtterance(txt);const v=pickVoice(lg);u.lang=v?v.lang:(lg==='en'?'en-US':'es-MX');if(v)u.voice=v;u.rate=fn?.85:(lg==='en'?.85:.93);u.pitch=1.08;u.onend=go;u.onerror=go;if(fn)fn();speechSynthesis.speak(u);setTimeout(go,900+txt.length*110);}catch(e){go();}};
   next();
 }
 function speak(txt){say([txt]);}
-function fx(kind){
+function fx(kind,txt){
   const el=$('fx');el.className='show '+kind;
-  el.innerHTML=kind==='good'?'<div class="ic">✅</div><div class="tx">¡Muy bien!</div>':'<div class="ic">❌</div><div class="tx">¡Casi!</div>';
+  el.innerHTML=kind==='good'?'<div class="ic">✅</div><div class="tx">'+(txt||'¡Muy bien!')+'</div>':'<div class="ic">❌</div><div class="tx">'+(txt||'¡Casi!')+'</div>';
   if(kind==='good')for(let i=0;i<18;i++){const c=document.createElement('div');c.className='conf';c.textContent=['🎉','⭐','🌸','💜','✨'][i%5];c.style.left=Math.random()*100+'vw';c.style.animationDelay=Math.random()*.4+'s';document.body.appendChild(c);setTimeout(()=>c.remove(),2200);}
   clearTimeout(fx.t);fx.t=setTimeout(()=>{el.className='';},kind==='good'?1100:800);
 }
@@ -522,66 +526,81 @@ function pick(b,o,q){
 let A=null;
 const ARMA_WORDS=['sol','pez','oso','pan','pie','uva','mar','gato','pato','casa','luna','vaca','mano','rana','dado','taza','bota','nube','cama','mono','sopa','coco','tren','flor'];
 const EMO={sol:'☀️',pez:'🐟',oso:'🐻',pan:'🍞',pie:'🦶',uva:'🍇',mar:'🌊',gato:'🐱',pato:'🦆',casa:'🏠',luna:'🌙',vaca:'🐮',mano:'✋',rana:'🐸',dado:'🎲',taza:'☕',bota:'👢',nube:'☁️',cama:'🛏️',mono:'🐵',sopa:'🍲',coco:'🥥',tren:'🚂',flor:'🌸'};
-function startArma(){
-  const three=shuffle(ARMA_WORDS.filter(w=>w.length===3)).slice(0,3),four=shuffle(ARMA_WORDS.filter(w=>w.length>3)).slice(0,5);
-  const g={id:'arma',name:'Arma la palabra',msg:'¡Armaste todas las palabras!',score:0,over:false,update(){},down(){},draw(){drawBg(H-60,0);}};
-  game=g;A={g,ws:three.concat(four),i:0,pos:0,miss:0,wordMiss:0,results:[],first:true,lock:false};
+const SPELL={cat:['🐱','gato'],dog:['🐶','perro'],sun:['☀️','sol'],hat:['🎩','sombrero'],pig:['🐷','cerdito'],cow:['🐮','vaca'],bus:['🚌','autobús'],bed:['🛏️','cama'],egg:['🥚','huevo'],cup:['☕','taza'],fish:['🐟','pez'],frog:['🐸','rana'],duck:['🦆','pato'],star:['⭐','estrella'],cake:['🎂','pastel'],tree:['🌳','árbol'],moon:['🌙','luna'],ball:['⚽','pelota'],bear:['🐻','oso'],milk:['🥛','leche'],book:['📖','libro']};
+const ES=t=>[t,null,'es'],EN=(t,fn)=>[t,fn||null,'en'];
+function startArma(lang){
+  const list=lang==='en'?Object.keys(SPELL):ARMA_WORDS;
+  const three=shuffle(list.filter(w=>w.length===3)).slice(0,3),four=shuffle(list.filter(w=>w.length>3)).slice(0,5);
+  const g=lang==='en'?{id:'spell',name:'Spelling en inglés',msg:'Great job! ¡Lo hiciste muy bien!'}:{id:'arma',name:'Arma la palabra',msg:'¡Armaste todas las palabras!'};
+  Object.assign(g,{score:0,over:false,update(){},down(){},draw(){drawBg(H-60,0);}});
+  game=g;A={g,lang,ws:three.concat(four),i:0,pos:0,miss:0,wordMiss:0,results:[],first:true,lock:false};
+  $('a_rep').style.background=lang==='en'?'#3A6FD8':'#C0569A';
   $('arma').classList.remove('hide');showA();
 }
+const L1=ch=>A.lang==='en'?EN(ch.toUpperCase()):ES(LN[ch]||ch);
 function aPrompt(full){
-  const w=A.ws[A.i],ch=w[A.pos];const parts=[];
-  if(A.first){parts.push('¡Hola Juli! Vamos a armar palabras. Escucha, y toca las letras en orden.');A.first=false;}
-  if(full||A.pos===0)parts.push('Arma la palabra: '+w+'.');
-  if(ch)parts.push((A.pos===0?'Empieza con la ':'Ahora busca la ')+LN[ch]+'.');
+  const w=A.ws[A.i],ch=w[A.pos],parts=[];
+  if(A.lang==='en'){
+    if(A.first){parts.push(ES('¡Hola Juli! Vamos a jugar spelling en inglés. Escucha la palabra y toca las letras en orden.'));A.first=false;}
+    if(full||A.pos===0){parts.push(ES(SPELL[w][1]+', en inglés, se dice:'));parts.push(EN(w));}
+    if(ch){parts.push(ES(A.pos===0?'Empieza con la':'Ahora busca la'));parts.push(L1(ch));}
+  }else{
+    if(A.first){parts.push(ES('¡Hola Juli! Vamos a armar palabras. Escucha, y toca las letras en orden.'));A.first=false;}
+    if(full||A.pos===0)parts.push(ES('Arma la palabra: '+w+'.'));
+    if(ch)parts.push(ES((A.pos===0?'Empieza con la ':'Ahora busca la ')+LN[ch]+'.'));
+  }
   say(parts);
 }
 function showA(){
   const w=A.ws[A.i],ghost=A.i<5;A.pos=0;A.wordMiss=0;A.miss=0;A.lock=false;
-  $('a_pic').textContent=EMO[w];$('a_pic').onclick=()=>aPrompt(true);$('a_rep').onclick=()=>aPrompt(true);
+  $('a_pic').innerHTML=(A.lang==='en'?SPELL[w][0]+'<div style="font-size:18px;color:#7A63A0;font-weight:700">('+SPELL[w][1]+')</div>':EMO[w]);
+  $('a_pic').onclick=()=>aPrompt(true);$('a_rep').onclick=()=>aPrompt(true);
   $('a_stars').textContent=A.results.map(r=>r?'⭐':'☆').join('')+'·'.repeat(A.ws.length-A.results.length);
   const sl=$('a_slots');sl.innerHTML='';
   [...w].forEach((ch,i)=>{const d=document.createElement('div');d.className='slot'+(ghost?' ghost':'')+(i===0?' cur':'');d.textContent=ghost?ch:'';sl.appendChild(d);});
   const extra=shuffle('abdeilmnoprstu'.split('').filter(c=>!w.includes(c))).slice(0,w.length<=3?2:3);
   const tl=$('a_tiles');tl.innerHTML='';
   shuffle([...w].concat(extra)).forEach(ch=>{const b=document.createElement('button');b.className='tile';b.textContent=ch;b.onclick=()=>tapTile(b,ch);tl.appendChild(b);});
-  $('a_hint').textContent='Toca las letras en orden';
+  $('a_hint').textContent=A.lang==='en'?'Toca las letras en orden · Tap the letters':'Toca las letras en orden';
   setTimeout(()=>aPrompt(true),250);
 }
 function tapTile(b,ch){
   if(A.lock||b.classList.contains('used'))return;
-  const w=A.ws[A.i],need=w[A.pos],slots=[...$('a_slots').children];
+  const w=A.ws[A.i],need=w[A.pos],slots=[...$('a_slots').children],en=A.lang==='en';
   if(ch===need){
     b.classList.add('used');b.classList.remove('pulse');[...$('a_tiles').children].forEach(t=>t.classList.remove('pulse','no'));
     const sl=slots[A.pos];sl.textContent=ch;sl.classList.remove('ghost','cur');sl.classList.add('done');
     beep(660+A.pos*120,.09,'triangle');A.pos++;A.miss=0;$('a_hint').textContent='Toca las letras en orden';
     if(A.pos>=w.length){
-      A.lock=true;const ok=A.wordMiss===0;if(ok)A.g.score++;A.results.push(ok);fx('good');
+      A.lock=true;const ok=A.wordMiss===0;if(ok)A.g.score++;A.results.push(ok);fx('good',en?'Great job!':null);
       setTimeout(()=>beep(1175,.12,'triangle'),120);setTimeout(()=>beep(1568,.16,'triangle'),240);
-      $('a_hint').textContent='¡Muy bien! Dice "'+w+'"';
+      $('a_hint').textContent=(en?'Great! ':'¡Muy bien! ')+'"'+w+'"'+(en?' = '+SPELL[w][1]:'');
       const clear=()=>slots.forEach(x=>x.style.background='');
-      const parts=[['¡Muy bien!',null]];[...w].forEach((c,i)=>parts.push([LN[c]||c,()=>{clear();slots[i].style.background='#FFE066';}]));
-      parts.push([w+'.',()=>slots.forEach(x=>x.style.background='#FFE066')]);
-      say(parts,()=>{clear();setTimeout(()=>{A.i++;if(A.i>=A.ws.length){$('arma').classList.add('hide');say(['¡Terminaste! Eres una campeona.']);endGame(A.g);}else showA();},400);});
-    }else{slots[A.pos].classList.add('cur');say([LN[ch]+'. Ahora busca la '+LN[w[A.pos]]+'.']);}
+      const parts=[en?EN('Great job!'):ES('¡Muy bien!')];
+      [...w].forEach((c,i)=>{const p=L1(c);p[1]=()=>{clear();slots[i].style.background='#FFE066';};parts.push(p);});
+      const lastP=en?EN(w+'!'):ES(w+'.');lastP[1]=()=>slots.forEach(x=>x.style.background='#FFE066');parts.push(lastP);
+      if(en)parts.push(ES(SPELL[w][1]+'.'));
+      say(parts,()=>{clear();setTimeout(()=>{A.i++;if(A.i>=A.ws.length){$('arma').classList.add('hide');say([en?EN('You did it!'):ES('¡Terminaste! Eres una campeona.')]);endGame(A.g);}else showA();},400);});
+    }else{slots[A.pos].classList.add('cur');say([L1(ch),ES('Ahora busca la'),L1(w[A.pos])]);}
   }else{
     A.miss++;A.wordMiss++;b.classList.remove('no');void b.offsetWidth;b.classList.add('no');beep(200,.18,'sawtooth',.07);
     if(A.miss>=2){const t=[...$('a_tiles').children].find(t=>!t.classList.contains('used')&&t.textContent===need);t&&t.classList.add('pulse');
-      $('a_hint').textContent='¡Es la que brilla!';say(['Esa es la '+LN[ch]+'. Mira, la '+LN[need]+' es la que brilla.']);}
-    else{$('a_hint').textContent='Casi… busca la '+need.toUpperCase()+' '+need;say(['Esa es la '+LN[ch]+'. Busca la '+LN[need]+'.']);}
+      $('a_hint').textContent='¡Es la que brilla!';say([ES('Esa es la'),L1(ch),ES('Mira, la'),L1(need),ES('es la que brilla.')]);}
+    else{$('a_hint').textContent='Casi… busca la '+need.toUpperCase()+' '+need;say([ES('Esa es la'),L1(ch),ES('Busca la'),L1(need)]);}
   }
 }
 function hideAll(){sayId++;try{speechSynthesis.cancel();}catch(e){}['menu','over','leer','arma','psel','pbar'].forEach(k=>$(k).classList.add('hide'));document.body.classList.remove('piano');}
 function start(id){lastId=id;ensureAC();hideAll();
   if(id==='leer'){playSong('leer');startLeer();return;}
-  if(id==='arma'){playSong('leer');startArma();return;}
+  if(id==='arma'||id==='spell'){playSong('leer');startArma(id==='spell'?'en':'es');return;}
   if(id==='piano'){game=null;playSong('menu');showPianoSelect();return;}
   playSong('game');game=MAKERS[id]();}
 function toMenu(){game=null;L=null;try{speechSynthesis.cancel();}catch(e){}hideAll();refreshRecs();$('menu').classList.remove('hide');playSong('menu');}
-function refreshRecs(){['torre','brinca','atrapa','leer','arma','piano'].forEach(k=>$('r_'+k).textContent=getRec(k));}
+function refreshRecs(){['torre','brinca','atrapa','leer','arma','spell','piano'].forEach(k=>$('r_'+k).textContent=getRec(k));}
 function endGame(g){
   g.over=true;
   const prev=getRec(g.id),nuevo=g.score>prev;if(nuevo)setRec(g.id,g.score);
-  $('o_msg').textContent=g.msg;$('o_game').textContent=g.name;$('o_score').textContent=g.id==='leer'?g.score+'/10':g.id==='arma'?g.score+'/8':g.score;
+  $('o_msg').textContent=g.msg;$('o_game').textContent=g.name;$('o_score').textContent=g.id==='leer'?g.score+'/10':(g.id==='arma'||g.id==='spell')?g.score+'/8':g.score;
   $('o_rec').textContent=Math.max(prev,g.score);$('newrec').classList.toggle('hide',!nuevo||g.score===0);
   const txt='¡Hice '+g.score+' puntos en "'+g.name+'" de Capijuli! 🌸 ¿Me ganas? '+location.href;
   $('o_share').href='https://wa.me/?text='+encodeURIComponent(txt);
@@ -591,7 +610,7 @@ function endGame(g){
 
 $('snd').textContent=soundOn?'🔊':'🔇';
 $('snd').addEventListener('click',e=>{e.stopPropagation();ensureAC();setSound(!soundOn);if(soundOn&&!music.song)playSong(game?'game':'menu');});
-['pointerdown','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{unlockAudio();if(AC&&!music.song&&!(game&&game.id==='piano'))playSong(game?((game.id==='leer'||game.id==='arma')?'leer':'game'):'menu');},{capture:true,passive:true}));
+['pointerdown','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{unlockAudio();if(AC&&!music.song&&!(game&&game.id==='piano'))playSong(game?((game.id==='leer'||game.id==='arma'||game.id==='spell')?'leer':'game'):'menu');},{capture:true,passive:true}));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AC){try{AC.resume();}catch(e){}if(silentEl&&soundOn)silentEl.play().catch(()=>{});}});
 try{speechSynthesis.getVoices();}catch(e){}
 cv.addEventListener('pointerdown',e=>{if(game&&!game.over)game.down(e.clientX,e.clientY);e.preventDefault();});
