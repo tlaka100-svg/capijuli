@@ -35,6 +35,20 @@ h2{font-size:28px;margin:0;color:#5B3A8E}
 #pb_title{flex:1;text-align:center;font-weight:800;color:#5B3A8E;background:rgba(255,255,255,.75);border-radius:12px;padding:8px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.piano #snd{display:none}
 .b5{background:#2FA89A}
+#l_row{display:flex;align-items:center;gap:14px;justify-content:center}
+#l_letter{font-size:min(52px,9vh);font-weight:800;color:#8E5CC9;background:#fff;border-radius:18px;padding:2px 18px;border:3px solid #CDB8EE;min-width:70px}
+#l_rep{border:0;background:#8E5CC9;color:#fff;font-size:20px;font-weight:800;border-radius:16px;padding:10px 18px;box-shadow:0 4px 0 #6b3fa6;cursor:pointer;font-family:inherit}
+.word .f{color:#8E5CC9;font-size:1.15em}
+.word .hl{background:#FFE066;border-radius:6px;color:#5B3A8E}
+.word.ok .f,.word.no .f{color:inherit}
+.word.pulse{animation:pulse 1s infinite;border-color:#FFD23F}
+@keyframes pulse{50%{transform:scale(1.06);box-shadow:0 0 0 8px #FFE066}}
+#fx{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:20;opacity:0;transition:opacity .2s}
+#fx.show{opacity:1}#fx.good{background:rgba(61,163,93,.28)}#fx.bad{background:rgba(229,72,77,.25)}
+#fx .ic{font-size:150px;animation:pop .5s}#fx .tx{font-size:40px;font-weight:800;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.25);animation:pop .5s}
+@keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.conf{position:fixed;top:-50px;font-size:34px;z-index:21;pointer-events:none;animation:fall 1.6s linear forwards}
+@keyframes fall{to{transform:translateY(115vh) rotate(400deg)}}
 #newrec{color:#3DA35D;font-weight:800;font-size:20px}
 </style>
 </head>
@@ -55,8 +69,9 @@ body.piano #snd{display:none}
 <div id="leer" class="ov hide">
   <button id="l_x" onclick="toMenu()">← Menú</button>
   <div id="l_stars"></div>
-  <p id="l_pic" title="Toca para escuchar"></p>
-  <p class="sub" id="l_hint">¿Qué dice? Toca la palabra correcta</p>
+  <p id="l_pic"></p>
+  <div id="l_row"><button id="l_rep">🔊 Escuchar</button><div id="l_letter"></div></div>
+  <p class="sub" id="l_hint"></p>
   <div id="l_opts"></div>
 </div>
 
@@ -68,6 +83,7 @@ body.piano #snd{display:none}
   <p class="sub" style="font-size:14px;max-width:330px;margin:0">Toca en tu piano la tecla del color que va bajando cuando llegue a la línea. También puedes tocarla aquí en la pantalla.</p>
   <button class="btn bn" onclick="toMenu()" style="font-size:18px;padding:10px">Menú</button>
 </div>
+<div id="fx"></div>
 <div id="pbar" class="hide"><button id="pb_menu">←</button><span id="pb_title"></span><button id="pb_mel">🎵</button><button id="pb_pause">⏸</button></div>
 
 <button id="snd" aria-label="Sonido">🔊</button>
@@ -170,7 +186,7 @@ function musicTick(){
   }
 }
 function setSound(on){soundOn=on;try{localStorage.setItem('capijuli_snd',on?'1':'0');}catch(e){}if(MASTER)MASTER.gain.value=on?1:0;if(!on){try{speechSynthesis.cancel();}catch(e){}try{silentEl&&silentEl.pause();}catch(e){}}else unlockAudio();document.getElementById('snd').textContent=on?'🔊':'🔇';if(on&&AC)music.next=AC.currentTime+.05;}
-function speak(txt){if(!soundOn)return;try{const u=new SpeechSynthesisUtterance(txt);u.lang='es-MX';u.rate=.85;const v=speechSynthesis.getVoices().find(v=>/^es/i.test(v.lang));if(v)u.voice=v;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+
 
 function getRec(k){try{return parseInt(localStorage.getItem('capijuli_'+k))||0;}catch(e){return 0;}}
 function setRec(k,v){try{localStorage.setItem('capijuli_'+k,String(v));}catch(e){}}
@@ -405,37 +421,83 @@ $('pb_pause').onclick=()=>{if(game&&game.togglePause)$('pb_pause').textContent=g
 /* ---------- Control ---------- */
 const MAKERS={torre:Torre,brinca:Brinca,atrapa:Atrapa};
 let game=null,lastId='torre';
-const WORDS_EASY=[['gato','🐱'],['pato','🦆'],['casa','🏠'],['luna','🌙'],['sol','☀️'],['pez','🐟'],['oso','🐻'],['vaca','🐮'],['mano','✋'],['rana','🐸'],['dado','🎲'],['lobo','🐺'],['pera','🍐'],['piña','🍍'],['uva','🍇'],['taza','☕'],['tren','🚂'],['bota','👢'],['nube','☁️'],['flor','🌸'],['cama','🛏️'],['boca','👄'],['mono','🐵'],['pan','🍞'],['sopa','🍲'],['coco','🥥'],['pie','🦶']];
-const WORDS_HARD=[['silla','🪑'],['leche','🥛'],['queso','🧀'],['limón','🍋'],['tomate','🍅'],['globo','🎈'],['llave','🔑'],['libro','📖'],['lápiz','✏️'],['perro','🐶'],['conejo','🐰'],['tortuga','🐢'],['abeja','🐝'],['pollito','🐥'],['árbol','🌳'],['estrella','⭐'],['corazón','❤️'],['pelota','⚽'],['foca','🦭'],['reloj','⌚']];
+const WORDS_EASY=['ga-to🐱','pa-to🦆','ca-sa🏠','lu-na🌙','sol☀️','pez🐟','o-so🐻','va-ca🐮','ma-no✋','ra-na🐸','da-do🎲','lo-bo🐺','pe-ra🍐','u-va🍇','ta-za☕','bo-ta👢','nu-be☁️','flor🌸','ca-ma🛏️','bo-ca👄','mo-no🐵','pan🍞','so-pa🍲','co-co🥥','pie🦶','pi-ña🍍','tren🚂'].map(parseW);
+const WORDS_HARD=['si-lla🪑','le-che🥛','que-so🧀','li-món🍋','to-ma-te🍅','glo-bo🎈','lla-ve🔑','li-bro📖','lá-piz✏️','pe-rro🐶','co-ne-jo🐰','tor-tu-ga🐢','a-be-ja🐝','po-lli-to🐥','ár-bol🌳','es-tre-lla⭐','co-ra-zón❤️','pe-lo-ta⚽','fo-ca🦭','re-loj⌚'].map(parseW);
+function parseW(x){const m=x.match(/^([a-záéíóúñ\-]+)(.+)$/i);return{syl:m[1].split('-'),w:m[1].replace(/-/g,''),e:m[2]};}
+const LN={a:'a',b:'be',c:'ce',d:'de',e:'e',f:'efe',g:'ge',h:'hache',i:'i',j:'jota',k:'ka',l:'ele',m:'eme',n:'ene','ñ':'eñe',o:'o',p:'pe',q:'cu',r:'erre',s:'ese',t:'te',u:'u',v:'uve',w:'doble uve',x:'equis',y:'ye',z:'zeta','á':'a','é':'e','í':'i','ó':'o','ú':'u'};
+const base=ch=>({'á':'a','é':'e','í':'i','ó':'o','ú':'u'}[ch]||ch);
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+let sayId=0;
+function pickVoice(){try{const vs=speechSynthesis.getVoices();return vs.find(v=>/es[-_]MX/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang));}catch(e){return null;}}
+function say(parts,done){
+  const id=++sayId;try{speechSynthesis.cancel();}catch(e){}
+  if(!soundOn||!window.speechSynthesis){parts.forEach(p=>Array.isArray(p)&&p[1]&&p[1]());done&&setTimeout(done,600);return;}
+  let i=0;
+  const next=()=>{if(id!==sayId)return;if(i>=parts.length){done&&done();return;}
+    const p=parts[i++],txt=Array.isArray(p)?p[0]:p,fn=Array.isArray(p)?p[1]:null;let fired=false;
+    const go=()=>{if(fired||id!==sayId)return;fired=true;setTimeout(next,120);};
+    try{const u=new SpeechSynthesisUtterance(txt);u.lang='es-MX';u.rate=.8;const v=pickVoice();if(v)u.voice=v;u.onend=go;u.onerror=go;if(fn)fn();speechSynthesis.speak(u);setTimeout(go,900+txt.length*110);}catch(e){go();}};
+  next();
+}
+function speak(txt){say([txt]);}
+function fx(kind){
+  const el=$('fx');el.className='show '+kind;
+  el.innerHTML=kind==='good'?'<div class="ic">✅</div><div class="tx">¡Muy bien!</div>':'<div class="ic">❌</div><div class="tx">¡Casi!</div>';
+  if(kind==='good')for(let i=0;i<18;i++){const c=document.createElement('div');c.className='conf';c.textContent=['🎉','⭐','🌸','💜','✨'][i%5];c.style.left=Math.random()*100+'vw';c.style.animationDelay=Math.random()*.4+'s';document.body.appendChild(c);setTimeout(()=>c.remove(),2200);}
+  clearTimeout(fx.t);fx.t=setTimeout(()=>{el.className='';},kind==='good'?1100:800);
+}
 let L=null;
 function startLeer(){
-  const qs=shuffle(WORDS_EASY).slice(0,5).concat(shuffle(WORDS_HARD).slice(0,5));
+  const qs=shuffle(WORDS_EASY).slice(0,7).concat(shuffle(WORDS_HARD).slice(0,3));
   const g={id:'leer',name:'Lee con Capijuli',msg:'¡Terminaste la lectura!',score:0,over:false,update(){},down(){},draw(){drawBg(H-60,0);}};
-  game=g;L={g,qs,i:0,miss:false,lock:false,results:[]};
+  game=g;L={g,qs,i:0,miss:0,lock:false,results:[],first:true};
   $('leer').classList.remove('hide');showQ();
 }
+function promptQ(){
+  const q=L.qs[L.i],ln=LN[base(q.w[0])];
+  const parts=[];
+  if(L.first){parts.push('¡Hola Juli! Vamos a leer. Mira el dibujo, escucha, y toca la palabra.');L.first=false;}
+  parts.push('Busca dónde dice: '+q.w);
+  if(q.syl.length>1)q.syl.forEach(x=>parts.push(x));
+  parts.push([q.w+' empieza con la letra '+ln,()=>{$('l_letter').style.transform='scale(1.25)';setTimeout(()=>$('l_letter').style.transform='',400);}]);
+  say(parts);
+}
 function showQ(){
-  const [w,e]=L.qs[L.i],pool=WORDS_EASY.concat(WORDS_HARD).filter(x=>x[0]!==w);
-  const ranked=shuffle(pool).sort((a,b)=>((a[0][0]===w[0]?0:1)+Math.abs(a[0].length-w.length)*.3)-((b[0][0]===w[0]?0:1)+Math.abs(b[0].length-w.length)*.3));
-  const opts=shuffle([[w,e],ranked[0],ranked[1]]);
-  L.miss=false;L.lock=false;
-  $('l_pic').textContent=e;$('l_pic').onclick=()=>{if(L.lock)speak(w);};
-  $('l_hint').textContent='¿Qué dice? Toca la palabra correcta';
+  const q=L.qs[L.i],pool=(L.i<7?WORDS_EASY:WORDS_HARD).concat(WORDS_EASY).filter(x=>x.w!==q.w&&base(x.w[0])!==base(q.w[0]));
+  const ranked=shuffle(pool).sort((a,b)=>Math.abs(a.w.length-q.w.length)-Math.abs(b.w.length-q.w.length));
+  const d1=ranked[0],d2=ranked.find(x=>base(x.w[0])!==base(d1.w[0]));
+  const opts=shuffle([q,d1,d2]);
+  L.miss=0;L.lock=false;
+  $('l_pic').textContent=q.e;$('l_pic').onclick=promptQ;$('l_rep').onclick=promptQ;
+  $('l_letter').textContent=q.w[0].toUpperCase()+' '+q.w[0];
+  $('l_hint').textContent='Toca la palabra que escuchas';
   $('l_stars').textContent=L.results.map(r=>r?'⭐':'☆').join('')+'·'.repeat(10-L.results.length);
   const box=$('l_opts');box.innerHTML='';
-  opts.forEach(([ow])=>{const b=document.createElement('button');b.className='word';b.textContent=ow;b.onclick=()=>pick(b,ow,w);box.appendChild(b);});
+  opts.forEach(o=>{const b=document.createElement('button');b.className='word';b.dataset.w=o.w;
+    [...o.w].forEach((ch,i)=>{const sp=document.createElement('span');sp.textContent=ch;if(i===0)sp.className='f';b.appendChild(sp);});
+    b.onclick=()=>pick(b,o,q);box.appendChild(b);});
+  setTimeout(promptQ,250);
 }
-function pick(b,ow,w){
+function pick(b,o,q){
   if(L.lock||b.classList.contains('no'))return;
-  if(ow===w){
-    L.lock=true;b.classList.add('ok');if(!L.miss)L.g.score++;L.results.push(!L.miss);
-    beep(880,.1,'triangle');setTimeout(()=>beep(1175,.12,'triangle'),110);speak(w);
-    $('l_hint').textContent=L.miss?'¡Bien! Dice "'+w+'"':'¡Muy bien! 🎉';
-    setTimeout(()=>{L.i++;if(L.i>=L.qs.length){$('leer').classList.add('hide');endGame(L.g);}else showQ();},1500);
-  }else{L.miss=true;b.classList.add('no');beep(200,.2,'sawtooth',.07);$('l_hint').textContent='Casi… ¡intenta otra vez!';}
+  if(o.w===q.w){
+    L.lock=true;b.classList.remove('pulse');b.classList.add('ok');if(!L.miss)L.g.score++;L.results.push(!L.miss);
+    fx('good');beep(880,.1,'triangle');setTimeout(()=>beep(1175,.12,'triangle'),110);setTimeout(()=>beep(1568,.15,'triangle'),220);
+    $('l_hint').textContent='¡Muy bien! Dice "'+q.w+'"';
+    const spans=[...b.children];const clear=()=>spans.forEach(x=>x.classList.remove('hl'));
+    const parts=[['¡Muy bien!',null]];
+    [...q.w].forEach((ch,i)=>parts.push([LN[ch]||ch,()=>{clear();spans[i].classList.add('hl');}]));
+    parts.push([q.w,()=>spans.forEach(x=>x.classList.add('hl'))]);
+    say(parts,()=>{clear();setTimeout(()=>{L.i++;if(L.i>=L.qs.length){$('leer').classList.add('hide');say(['¡Terminaste! Muy bien Juli.']);endGame(L.g);}else showQ();},400);});
+  }else{
+    L.miss++;b.classList.add('no');fx('bad');beep(200,.2,'sawtooth',.07);
+    const ln=LN[base(q.w[0])];
+    if(L.miss>=2){const ok=[...$('l_opts').children].find(x=>x.dataset.w===q.w);ok&&ok.classList.add('pulse');
+      $('l_hint').textContent='¡Es la que brilla! Tócala';say(['Esa dice '+o.w+'.','Mira, es la que brilla. Dice '+q.w+'. Tócala.']);}
+    else{$('l_hint').textContent='Casi… busca la que empieza con '+q.w[0].toUpperCase();say(['Esa dice '+o.w+'.','¡Intenta otra vez! Busca la que empieza con la letra '+ln+'.']);}
+  }
 }
-function hideAll(){['menu','over','leer','psel','pbar'].forEach(k=>$(k).classList.add('hide'));document.body.classList.remove('piano');}
+function hideAll(){sayId++;try{speechSynthesis.cancel();}catch(e){}['menu','over','leer','psel','pbar'].forEach(k=>$(k).classList.add('hide'));document.body.classList.remove('piano');}
 function start(id){lastId=id;ensureAC();hideAll();
   if(id==='leer'){playSong('leer');startLeer();return;}
   if(id==='piano'){game=null;playSong('menu');showPianoSelect();return;}
