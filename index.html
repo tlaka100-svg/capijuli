@@ -14,11 +14,12 @@ h1{font-family:'Press Start 2P',monospace;font-size:30px;margin:6px 0;color:#5B3
 h2{font-size:28px;margin:0;color:#5B3A8E}
 .sub{color:#7A63A0;font-size:18px;margin:0 0 4px}
 .big{font-size:56px;font-weight:800;color:#8E5CC9;margin:0;line-height:1;font-family:'Press Start 2P',monospace}
-.btn{width:min(330px,88vw);padding:14px 16px;border:0;border-radius:18px;font-size:22px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.18);font-family:inherit;text-decoration:none;display:block;box-sizing:border-box}
+.btn{width:min(330px,88vw);padding:11px 16px;border:0;border-radius:18px;font-size:22px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.18);font-family:inherit;text-decoration:none;display:block;box-sizing:border-box}
 .btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
 .btn small{display:block;font-weight:500;font-size:14px;opacity:.95;margin-top:2px}
 .b1{background:#8E5CC9}.b2{background:#E072A4}.b3{background:#5C8FD6}.bw{background:#25D366}.bn{background:#A8998A}
 @media (max-height:560px){h1{font-size:22px;margin:2px 0}.btn{padding:9px 14px;font-size:18px}.btn small{font-size:12px}.ov{gap:8px;padding:10px}#mini{display:none}.big{font-size:40px}h2{font-size:22px}}
+@media (max-height:720px){#mini{display:none}.btn{padding:9px 14px}}
 @media (max-width:360px){h1{font-size:24px}.btn{font-size:19px}}
 #snd{position:fixed;right:12px;bottom:12px;z-index:50;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.9);font-size:22px;box-shadow:0 2px 6px rgba(0,0,0,.15);cursor:pointer}
 .b4{background:#E8A23A}
@@ -49,6 +50,13 @@ body.piano #snd{display:none}
 @keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 .conf{position:fixed;top:-50px;font-size:34px;z-index:21;pointer-events:none;animation:fall 1.6s linear forwards}
 @keyframes fall{to{transform:translateY(115vh) rotate(400deg)}}
+#a_slots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.slot{width:min(58px,13vw);height:min(68px,15vw);border-bottom:5px solid #8E5CC9;font-size:min(46px,10vw);font-weight:800;color:#5B3A8E;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.7);border-radius:12px 12px 4px 4px}
+.slot.ghost{color:rgba(91,58,142,.22)}.slot.cur{background:#FFF3B0;border-bottom-color:#E8A23A}.slot.done{color:#3DA35D}
+#a_tiles{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:420px}
+.tile{width:min(64px,15vw);height:min(64px,15vw);border:3px solid #CDB8EE;border-radius:16px;background:#fff;font-size:min(38px,9vw);font-weight:800;color:#5B3A8E;box-shadow:0 4px 0 #CDB8EE;cursor:pointer;font-family:inherit}
+.tile.used{visibility:hidden}.tile.no{animation:shake .35s;border-color:#E5484D;color:#E5484D}.tile.pulse{animation:pulse 1s infinite;border-color:#FFD23F}
+.b6{background:#C0569A}
 #newrec{color:#3DA35D;font-weight:800;font-size:20px}
 </style>
 </head>
@@ -63,6 +71,7 @@ body.piano #snd{display:none}
   <button class="btn b2" onclick="start('brinca')">🐊 Capijuli brinca<small>Toca para brincar · Récord: <span id="r_brinca">0</span></small></button>
   <button class="btn b3" onclick="start('atrapa')">🍉 Atrapa la lluvia<small>Mueve el dedo · Récord: <span id="r_atrapa">0</span></small></button>
   <button class="btn b4" onclick="start('leer')">📖 Lee con Capijuli<small>Toca la palabra · Récord: <span id="r_leer">0</span></small></button>
+  <button class="btn b6" onclick="start('arma')">🔤 Arma la palabra<small>Toca las letras en orden · Récord: <span id="r_arma">0</span></small></button>
   <button class="btn b5" onclick="start('piano')">🎹 Piano con Capijuli<small>Sigue las teclas de colores · Récord: <span id="r_piano">0</span></small></button>
 </div>
 
@@ -82,6 +91,15 @@ body.piano #snd{display:none}
   <button class="btn bn" id="p_speed" style="font-size:18px;padding:10px">🐢 Lento</button>
   <p class="sub" style="font-size:14px;max-width:330px;margin:0">Toca en tu piano la tecla del color que va bajando cuando llegue a la línea. También puedes tocarla aquí en la pantalla.</p>
   <button class="btn bn" onclick="toMenu()" style="font-size:18px;padding:10px">Menú</button>
+</div>
+<div id="arma" class="ov hide">
+  <button id="l_x2" onclick="toMenu()" style="position:fixed;left:12px;top:12px;z-index:5;border:0;background:rgba(255,255,255,.9);border-radius:12px;padding:8px 12px;font-size:16px;font-weight:700;color:#5B3A8E;cursor:pointer">← Menú</button>
+  <div id="a_stars" style="font-size:22px;letter-spacing:2px;min-height:28px"></div>
+  <p id="a_pic" style="font-size:min(100px,17vh);line-height:1.1;margin:0;cursor:pointer"></p>
+  <button id="a_rep" style="border:0;background:#C0569A;color:#fff;font-size:18px;font-weight:800;border-radius:16px;padding:9px 16px;box-shadow:0 4px 0 #94406f;cursor:pointer;font-family:inherit">🔊 Escuchar</button>
+  <div id="a_slots"></div>
+  <p class="sub" id="a_hint" style="margin:0"></p>
+  <div id="a_tiles"></div>
 </div>
 <div id="fx"></div>
 <div id="pbar" class="hide"><button id="pb_menu">←</button><span id="pb_title"></span><button id="pb_mel">🎵</button><button id="pb_pause">⏸</button></div>
@@ -428,7 +446,12 @@ const LN={a:'a',b:'be',c:'ce',d:'de',e:'e',f:'efe',g:'ge',h:'hache',i:'i',j:'jot
 const base=ch=>({'á':'a','é':'e','í':'i','ó':'o','ú':'u'}[ch]||ch);
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 let sayId=0;
-function pickVoice(){try{const vs=speechSynthesis.getVoices();return vs.find(v=>/es[-_]MX/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang));}catch(e){return null;}}
+let VOICE=null;
+function rankVoices(){try{const vs=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang));if(!vs.length)return;
+  const sc=v=>{const n=(v.name||'').toLowerCase();let k=0;if(/(mx|us|419)/i.test(v.lang))k+=3;if(/natural|neural|enhanced|premium|mejorad|siri|online/.test(n))k+=6;if(/google/.test(n))k+=4;if(/paulina|m[oó]nica|dalia|marisol|sabina|helena|elvira|jorge|juan/.test(n))k+=2;if(/compact|eloquence|grandma|grandpa|rocko|shelley|flo|reed|sandy|eddy/.test(n))k-=5;return k;};
+  VOICE=vs.sort((a,b)=>sc(b)-sc(a))[0];}catch(e){}}
+try{rankVoices();speechSynthesis.onvoiceschanged=rankVoices;}catch(e){}
+function pickVoice(){if(!VOICE)rankVoices();return VOICE;}
 function say(parts,done){
   const id=++sayId;try{speechSynthesis.cancel();}catch(e){}
   if(!soundOn||!window.speechSynthesis){parts.forEach(p=>Array.isArray(p)&&p[1]&&p[1]());done&&setTimeout(done,600);return;}
@@ -436,7 +459,7 @@ function say(parts,done){
   const next=()=>{if(id!==sayId)return;if(i>=parts.length){done&&done();return;}
     const p=parts[i++],txt=Array.isArray(p)?p[0]:p,fn=Array.isArray(p)?p[1]:null;let fired=false;
     const go=()=>{if(fired||id!==sayId)return;fired=true;setTimeout(next,120);};
-    try{const u=new SpeechSynthesisUtterance(txt);u.lang='es-MX';u.rate=.8;const v=pickVoice();if(v)u.voice=v;u.onend=go;u.onerror=go;if(fn)fn();speechSynthesis.speak(u);setTimeout(go,900+txt.length*110);}catch(e){go();}};
+    try{const u=new SpeechSynthesisUtterance(txt);const v=pickVoice();u.lang=v?v.lang:'es-MX';if(v)u.voice=v;u.rate=fn?.85:.93;u.pitch=1.08;u.onend=go;u.onerror=go;if(fn)fn();speechSynthesis.speak(u);setTimeout(go,900+txt.length*110);}catch(e){go();}};
   next();
 }
 function speak(txt){say([txt]);}
@@ -456,9 +479,8 @@ function startLeer(){
 function promptQ(){
   const q=L.qs[L.i],ln=LN[base(q.w[0])];
   const parts=[];
-  if(L.first){parts.push('¡Hola Juli! Vamos a leer. Mira el dibujo, escucha, y toca la palabra.');L.first=false;}
-  parts.push('Busca dónde dice: '+q.w);
-  if(q.syl.length>1)q.syl.forEach(x=>parts.push(x));
+  if(L.first){parts.push('¡Hola Juli! Vamos a leer juntas. Mira el dibujo, escucha bien, y toca la palabra.');L.first=false;}
+  parts.push('¿Dónde dice '+q.w+'?'+(q.syl.length>1?' '+q.syl.join('... ')+'.':''));
   parts.push([q.w+' empieza con la letra '+ln,()=>{$('l_letter').style.transform='scale(1.25)';setTimeout(()=>$('l_letter').style.transform='',400);}]);
   say(parts);
 }
@@ -497,17 +519,69 @@ function pick(b,o,q){
     else{$('l_hint').textContent='Casi… busca la que empieza con '+q.w[0].toUpperCase();say(['Esa dice '+o.w+'.','¡Intenta otra vez! Busca la que empieza con la letra '+ln+'.']);}
   }
 }
-function hideAll(){sayId++;try{speechSynthesis.cancel();}catch(e){}['menu','over','leer','psel','pbar'].forEach(k=>$(k).classList.add('hide'));document.body.classList.remove('piano');}
+let A=null;
+const ARMA_WORDS=['sol','pez','oso','pan','pie','uva','mar','gato','pato','casa','luna','vaca','mano','rana','dado','taza','bota','nube','cama','mono','sopa','coco','tren','flor'];
+const EMO={sol:'☀️',pez:'🐟',oso:'🐻',pan:'🍞',pie:'🦶',uva:'🍇',mar:'🌊',gato:'🐱',pato:'🦆',casa:'🏠',luna:'🌙',vaca:'🐮',mano:'✋',rana:'🐸',dado:'🎲',taza:'☕',bota:'👢',nube:'☁️',cama:'🛏️',mono:'🐵',sopa:'🍲',coco:'🥥',tren:'🚂',flor:'🌸'};
+function startArma(){
+  const three=shuffle(ARMA_WORDS.filter(w=>w.length===3)).slice(0,3),four=shuffle(ARMA_WORDS.filter(w=>w.length>3)).slice(0,5);
+  const g={id:'arma',name:'Arma la palabra',msg:'¡Armaste todas las palabras!',score:0,over:false,update(){},down(){},draw(){drawBg(H-60,0);}};
+  game=g;A={g,ws:three.concat(four),i:0,pos:0,miss:0,wordMiss:0,results:[],first:true,lock:false};
+  $('arma').classList.remove('hide');showA();
+}
+function aPrompt(full){
+  const w=A.ws[A.i],ch=w[A.pos];const parts=[];
+  if(A.first){parts.push('¡Hola Juli! Vamos a armar palabras. Escucha, y toca las letras en orden.');A.first=false;}
+  if(full||A.pos===0)parts.push('Arma la palabra: '+w+'.');
+  if(ch)parts.push((A.pos===0?'Empieza con la ':'Ahora busca la ')+LN[ch]+'.');
+  say(parts);
+}
+function showA(){
+  const w=A.ws[A.i],ghost=A.i<5;A.pos=0;A.wordMiss=0;A.miss=0;A.lock=false;
+  $('a_pic').textContent=EMO[w];$('a_pic').onclick=()=>aPrompt(true);$('a_rep').onclick=()=>aPrompt(true);
+  $('a_stars').textContent=A.results.map(r=>r?'⭐':'☆').join('')+'·'.repeat(A.ws.length-A.results.length);
+  const sl=$('a_slots');sl.innerHTML='';
+  [...w].forEach((ch,i)=>{const d=document.createElement('div');d.className='slot'+(ghost?' ghost':'')+(i===0?' cur':'');d.textContent=ghost?ch:'';sl.appendChild(d);});
+  const extra=shuffle('abdeilmnoprstu'.split('').filter(c=>!w.includes(c))).slice(0,w.length<=3?2:3);
+  const tl=$('a_tiles');tl.innerHTML='';
+  shuffle([...w].concat(extra)).forEach(ch=>{const b=document.createElement('button');b.className='tile';b.textContent=ch;b.onclick=()=>tapTile(b,ch);tl.appendChild(b);});
+  $('a_hint').textContent='Toca las letras en orden';
+  setTimeout(()=>aPrompt(true),250);
+}
+function tapTile(b,ch){
+  if(A.lock||b.classList.contains('used'))return;
+  const w=A.ws[A.i],need=w[A.pos],slots=[...$('a_slots').children];
+  if(ch===need){
+    b.classList.add('used');b.classList.remove('pulse');[...$('a_tiles').children].forEach(t=>t.classList.remove('pulse','no'));
+    const sl=slots[A.pos];sl.textContent=ch;sl.classList.remove('ghost','cur');sl.classList.add('done');
+    beep(660+A.pos*120,.09,'triangle');A.pos++;A.miss=0;$('a_hint').textContent='Toca las letras en orden';
+    if(A.pos>=w.length){
+      A.lock=true;const ok=A.wordMiss===0;if(ok)A.g.score++;A.results.push(ok);fx('good');
+      setTimeout(()=>beep(1175,.12,'triangle'),120);setTimeout(()=>beep(1568,.16,'triangle'),240);
+      $('a_hint').textContent='¡Muy bien! Dice "'+w+'"';
+      const clear=()=>slots.forEach(x=>x.style.background='');
+      const parts=[['¡Muy bien!',null]];[...w].forEach((c,i)=>parts.push([LN[c]||c,()=>{clear();slots[i].style.background='#FFE066';}]));
+      parts.push([w+'.',()=>slots.forEach(x=>x.style.background='#FFE066')]);
+      say(parts,()=>{clear();setTimeout(()=>{A.i++;if(A.i>=A.ws.length){$('arma').classList.add('hide');say(['¡Terminaste! Eres una campeona.']);endGame(A.g);}else showA();},400);});
+    }else{slots[A.pos].classList.add('cur');say([LN[ch]+'. Ahora busca la '+LN[w[A.pos]]+'.']);}
+  }else{
+    A.miss++;A.wordMiss++;b.classList.remove('no');void b.offsetWidth;b.classList.add('no');beep(200,.18,'sawtooth',.07);
+    if(A.miss>=2){const t=[...$('a_tiles').children].find(t=>!t.classList.contains('used')&&t.textContent===need);t&&t.classList.add('pulse');
+      $('a_hint').textContent='¡Es la que brilla!';say(['Esa es la '+LN[ch]+'. Mira, la '+LN[need]+' es la que brilla.']);}
+    else{$('a_hint').textContent='Casi… busca la '+need.toUpperCase()+' '+need;say(['Esa es la '+LN[ch]+'. Busca la '+LN[need]+'.']);}
+  }
+}
+function hideAll(){sayId++;try{speechSynthesis.cancel();}catch(e){}['menu','over','leer','arma','psel','pbar'].forEach(k=>$(k).classList.add('hide'));document.body.classList.remove('piano');}
 function start(id){lastId=id;ensureAC();hideAll();
   if(id==='leer'){playSong('leer');startLeer();return;}
+  if(id==='arma'){playSong('leer');startArma();return;}
   if(id==='piano'){game=null;playSong('menu');showPianoSelect();return;}
   playSong('game');game=MAKERS[id]();}
 function toMenu(){game=null;L=null;try{speechSynthesis.cancel();}catch(e){}hideAll();refreshRecs();$('menu').classList.remove('hide');playSong('menu');}
-function refreshRecs(){['torre','brinca','atrapa','leer','piano'].forEach(k=>$('r_'+k).textContent=getRec(k));}
+function refreshRecs(){['torre','brinca','atrapa','leer','arma','piano'].forEach(k=>$('r_'+k).textContent=getRec(k));}
 function endGame(g){
   g.over=true;
   const prev=getRec(g.id),nuevo=g.score>prev;if(nuevo)setRec(g.id,g.score);
-  $('o_msg').textContent=g.msg;$('o_game').textContent=g.name;$('o_score').textContent=g.id==='leer'?g.score+'/10':g.score;
+  $('o_msg').textContent=g.msg;$('o_game').textContent=g.name;$('o_score').textContent=g.id==='leer'?g.score+'/10':g.id==='arma'?g.score+'/8':g.score;
   $('o_rec').textContent=Math.max(prev,g.score);$('newrec').classList.toggle('hide',!nuevo||g.score===0);
   const txt='¡Hice '+g.score+' puntos en "'+g.name+'" de Capijuli! 🌸 ¿Me ganas? '+location.href;
   $('o_share').href='https://wa.me/?text='+encodeURIComponent(txt);
@@ -517,7 +591,7 @@ function endGame(g){
 
 $('snd').textContent=soundOn?'🔊':'🔇';
 $('snd').addEventListener('click',e=>{e.stopPropagation();ensureAC();setSound(!soundOn);if(soundOn&&!music.song)playSong(game?'game':'menu');});
-['pointerdown','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{unlockAudio();if(AC&&!music.song&&!(game&&game.id==='piano'))playSong(game?(game.id==='leer'?'leer':'game'):'menu');},{capture:true,passive:true}));
+['pointerdown','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{unlockAudio();if(AC&&!music.song&&!(game&&game.id==='piano'))playSong(game?((game.id==='leer'||game.id==='arma')?'leer':'game'):'menu');},{capture:true,passive:true}));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AC){try{AC.resume();}catch(e){}if(silentEl&&soundOn)silentEl.play().catch(()=>{});}});
 try{speechSynthesis.getVoices();}catch(e){}
 cv.addEventListener('pointerdown',e=>{if(game&&!game.over)game.down(e.clientX,e.clientY);e.preventDefault();});
