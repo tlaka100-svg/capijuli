@@ -335,6 +335,7 @@ let pSlow=true;
 function showPianoSelect(){
   const box=$('p_songs');box.innerHTML='';
   PSONGS.forEach((sg,i)=>{const b=document.createElement('button');b.className='btn b5';b.style.fontSize='20px';b.style.padding='11px';b.textContent=sg.e+' '+sg.t;b.onclick=()=>startPiano(i);box.appendChild(b);});
+  const fb=document.createElement('button');fb.className='btn b1';fb.style.fontSize='20px';fb.style.padding='11px';fb.textContent='🎹 Piano libre';fb.onclick=()=>startPiano(-1);box.appendChild(fb);
   $('p_speed').textContent=pSlow?'🐢 Lento':'🐇 Normal';
   $('psel').classList.remove('hide');
 }
@@ -343,17 +344,19 @@ function startPiano(i){
   ensureAC();playSong(null);hideAll();document.body.classList.add('piano');
   game=Piano(i,pSlow);$('pbar').classList.remove('hide');
   $('pb_mel').textContent='🎵';$('pb_pause').textContent='⏸';
+  $('pb_mel').style.display=$('pb_pause').style.display=i<0?'none':'';
 }
 function Piano(si,slow){
-  const song=PSONGS[si],bpm=slow?60:84,spb=60/bpm;
+  const free=si<0,song=free?{t:'Piano libre',e:'🎹',n:[]}:PSONGS[si],bpm=slow?60:84,spb=60/bpm;let hop=0;
   const g={id:'piano',name:'Piano · '+song.t,msg:'¡Terminaste la canción! 🎹',score:0,over:false,melody:true,again:()=>startPiano(si)};
   const KH=Math.max(110,Math.min(H*0.3,230)),hitY=H-KH,FALL=slow?3.6:3,spd=(hitY-110)/FALL,kw=W/8;
   let t=0,acc=0,paused=false,sparks=[],lastScore=-1;const lit={};
   const notes=song.n.map(([m,b])=>{const n={m,time:FALL+1+acc*spb,dur:b*spb,played:false,hit:false};acc+=b;return n;});
-  const endT=notes[notes.length-1].time+notes[notes.length-1].dur+1.5;
+  const endT=free?Infinity:notes[notes.length-1].time+notes[notes.length-1].dur+1.5;
   const lane=m=>(m in BLACK)?{x:kw*(BLACK[m]+1),w:kw*0.55,black:true}:{x:kw*WHITE.indexOf(m)+kw/2,w:kw*0.84,black:false};
   function keyAt(x,y){if(y<hitY)return null;if(y<hitY+KH*0.6){for(const k in BLACK){const L=lane(+k);if(Math.abs(x-L.x)<L.w/2)return +k;}}return WHITE[Math.min(7,Math.max(0,Math.floor(x/kw)))];}
-  g.down=(x,y)=>{const m=keyAt(x,y);if(m==null)return;pianoNote(m,.5,.22);lit[m]=Math.max(lit[m]||0,.22);
+  g.down=(x,y)=>{const m=keyAt(x,y);if(m==null)return;pianoNote(m,free?.9:.5,.22);lit[m]=Math.max(lit[m]||0,.22);
+    if(free){const [nm,col]=NOTE_INFO[m];sparks.push({x:Math.min(W-50,Math.max(50,lane(m).x)),y:hitY-24,t:0,txt:'♪ '+nm,col});hop=.3;return;}
     const n=notes.find(n=>n.m===m&&!n.hit&&Math.abs(t-n.time)<0.45);
     if(n){n.hit=true;g.score++;sparks.push({x:lane(m).x,y:hitY-24,t:0,txt:['¡Bien!','¡Súper!','⭐'][g.score%3]});}};
   g.togglePause=()=>{paused=!paused;return paused;};
@@ -361,7 +364,7 @@ function Piano(si,slow){
     if(paused||g.over)return;t+=dt;
     for(const n of notes){if(!n.played&&t>=n.time){n.played=true;if(g.melody)pianoNote(n.m,n.dur,.2);lit[n.m]=Math.max(lit[n.m]||0,n.dur*.9);}}
     for(const k in lit){lit[k]-=dt;if(lit[k]<=0)delete lit[k];}
-    sparks.forEach(s=>s.t+=dt);sparks=sparks.filter(s=>s.t<.8);
+    sparks.forEach(s=>s.t+=dt);sparks=sparks.filter(s=>s.t<(free?1.2:.8));hop=Math.max(0,hop-dt);
     if(g.score!==lastScore){lastScore=g.score;$('pb_title').textContent=song.e+' '+song.t+(g.score?' · ⭐ '+g.score:'');}
     if(t>endT)endGame(g);
   };
@@ -385,11 +388,12 @@ function Piano(si,slow){
       ctx.fillStyle=on?'#fff':col;ctx.font='800 '+Math.round(Math.min(22,kw*0.3))+'px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(nm,x+kw/2,H-22);});
     for(const k in BLACK){const m=+k,L=lane(m),on=lit[m]>0;ctx.fillStyle=on?NOTE_INFO[m][1]:'#2A2433';ctx.beginPath();ctx.roundRect(L.x-L.w/2,hitY,L.w,KH*0.6,4);ctx.fill();
       if(m===70){ctx.fillStyle='#fff';ctx.font='700 '+Math.round(Math.min(14,L.w*0.32))+'px system-ui,sans-serif';ctx.textBaseline='bottom';ctx.fillText('Si♭',L.x,hitY+KH*0.6-6);}}
+    if(free&&!sparks.length){ctx.font='800 26px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(91,58,142,.55)';ctx.fillText('¡Toca las teclas! 🎶',W/2,hitY/2+20);}
     const nx=notes.find(n=>!n.played);
     if(nx){const [nm,col]=NOTE_INFO[nx.m];ctx.font='800 20px system-ui,sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillStyle='#5B3A8E';ctx.fillText('Sigue:',W-60,66);ctx.fillStyle=col;ctx.beginPath();ctx.arc(W-34,77,20,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='800 13px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(nm,W-34,77);}
-    const bounce=t>FALL?-Math.abs(Math.sin(t*Math.PI/spb))*8:0;drawCapy(ctx,44,150+bounce,48);
+    const bounce=free?-Math.sin(hop/.3*Math.PI)*14:(t>FALL?-Math.abs(Math.sin(t*Math.PI/spb))*8:0);drawCapy(ctx,44,150+bounce,48);
     ctx.font='800 22px system-ui,sans-serif';ctx.textAlign='center';ctx.fillStyle='#3DA35D';ctx.textBaseline='middle';
-    sparks.forEach(s=>{ctx.globalAlpha=1-s.t/.8;ctx.fillText(s.txt,s.x,s.y-s.t*50);});ctx.globalAlpha=1;
+    sparks.forEach(s=>{const life=free?1.2:.8;ctx.globalAlpha=1-s.t/life;ctx.fillStyle=s.col||'#3DA35D';ctx.font='800 '+(free?28:22)+'px system-ui,sans-serif';ctx.fillText(s.txt,s.x,s.y-s.t*(free?120:50));});ctx.globalAlpha=1;
   };
   $('pb_title').textContent=song.e+' '+song.t;
   return g;
