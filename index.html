@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Capijuli</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#C9B3EC;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+canvas#c{display:block;width:100vw;height:100vh}
+.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(246,239,255,.96);text-align:center;padding:20px;box-sizing:border-box;overflow:auto}
+.hide{display:none!important}
+h1{font-family:'Press Start 2P',monospace;font-size:30px;margin:6px 0;color:#5B3A8E}
+h2{font-size:28px;margin:0;color:#5B3A8E}
+.sub{color:#7A63A0;font-size:18px;margin:0 0 4px}
+.big{font-size:56px;font-weight:800;color:#8E5CC9;margin:0;line-height:1;font-family:'Press Start 2P',monospace}
+.btn{width:min(330px,88vw);padding:14px 16px;border:0;border-radius:18px;font-size:22px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.18);font-family:inherit;text-decoration:none;display:block;box-sizing:border-box}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.btn small{display:block;font-weight:500;font-size:14px;opacity:.95;margin-top:2px}
+.b1{background:#8E5CC9}.b2{background:#E072A4}.b3{background:#5C8FD6}.bw{background:#25D366}.bn{background:#A8998A}
+#newrec{color:#3DA35D;font-weight:800;font-size:20px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="menu" class="ov">
+  <canvas id="mini" width="320" height="290" style="width:140px;height:127px"></canvas>
+  <h1>CapiJuli</h1>
+  <p class="sub">¿A qué jugamos?</p>
+  <button class="btn b1" onclick="start('torre')">🍊 Torre chill<small>Toca para soltar · Récord: <span id="r_torre">0</span></small></button>
+  <button class="btn b2" onclick="start('brinca')">🐊 Capijuli brinca<small>Toca para brincar · Récord: <span id="r_brinca">0</span></small></button>
+  <button class="btn b3" onclick="start('atrapa')">🍉 Atrapa la lluvia<small>Mueve el dedo · Récord: <span id="r_atrapa">0</span></small></button>
+</div>
+
+<div id="over" class="ov hide">
+  <h2 id="o_msg"></h2>
+  <p class="sub" id="o_game"></p>
+  <p class="big" id="o_score">0</p>
+  <p class="sub">Récord: <b id="o_rec">0</b></p>
+  <div id="newrec" class="hide">¡Nuevo récord! 🎉</div>
+  <button class="btn b1" id="o_again">Otra vez</button>
+  <a class="btn bw" id="o_share" target="_blank" rel="noopener">Retar por WhatsApp</a>
+  <button class="btn bn" onclick="toMenu()">Menú</button>
+</div>
+
+<script>
+// Capijuli en pixel art (16 x 24)
+const PAL={H:'#3B2416',h:'#6A4630',F:'#C98146',f:'#A0632F',E:'#B06A33',G:'#D9D3E8',L:'#2A2433',N:'#6E4A3C',T:'#FFFFFF',S:'#D2CFD6',s:'#ADAAB5',P:'#8E5CC9',K:'#5A3A26'};
+const SPR=[
+"....HHHHHHHH....",
+"...HHHhHHHHHH...",
+"..HHHhHHHHHhHH..",
+"..HHHHHHHHHHHH..",
+"..HHHHHHHHHHHH..",
+"..HHGGGGGGGGHH..",
+"..HHLLLGGLLLHH..",
+"..HHLLLFFLLLHH..",
+"..HHFFFNNFFFHH..",
+"..HHFFNNNNFFHH..",
+"..HHFFFTTFFFHH..",
+"..HHHFFFFFFHHH..",
+"..HHHSSSSSSHHH..",
+".HHHSSSSSSSSHHH.",
+".HHSSPSSSSPSSHH.",
+".HHFSSSSPSSSFHH.",
+".HHHSSSSSSSSHHH.",
+".HHHSPSSSSPSHHH.",
+"..HHSSSSSSSSHH..",
+"..HhHFFFFFFHhH..",
+"....FfFFFFfF....",
+".....FF..FF.....",
+".....FF..FF.....",
+"....KKK..KKK...."];
+const sprite=document.createElement('canvas');sprite.width=16;sprite.height=24;const SH=24/16;
+{const c=sprite.getContext('2d');SPR.forEach((r,y)=>[...r].forEach((ch,x)=>{if(PAL[ch]){c.fillStyle=PAL[ch];c.fillRect(x,y,1,1);}}));}
+const px16=v=>Math.max(48,Math.round(v/16)*16);
+
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W,H;
+function resize(){const d=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+addEventListener('resize',resize);resize();
+
+const EMOJI_FONT='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function emo(c,ch,x,y,size){c.font=size+'px '+EMOJI_FONT;c.textAlign='center';c.textBaseline='middle';c.fillText(ch,x,y);}
+
+// Capijuli: (x,y) = centro inferior, w = ancho
+function drawCapy(c,x,y,w,sad){
+  const h=w*SH;c.imageSmoothingEnabled=false;
+  c.drawImage(sprite,Math.round(x-w/2),Math.round(y-h),w,h);
+  if(sad)emo(c,'💫',x,y-h-w*0.12,w*0.32);
+}
+// Dónde está la cabeza (para apilar) y la caja de choque
+function capInfo(w){const h=w*SH;return{dx:0,top:h,half:w*0.28,h};}
+function capBox(x,y,w){const h=w*SH;return{l:x-w*0.3,r:x+w*0.3,t:y-h*0.9,b:y-h*0.04};}
+const hitBox=(a,b)=>a.l<b.r&&a.r>b.l&&a.t<b.b&&a.b>b.t;
+
+let AC=null;
+function beep(f,d,type,v){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(v||.14,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+(d||.08));o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.08)+.02);}catch(e){}}
+
+function getRec(k){try{return parseInt(localStorage.getItem('capijuli_'+k))||0;}catch(e){return 0;}}
+function setRec(k,v){try{localStorage.setItem('capijuli_'+k,String(v));}catch(e){}}
+
+let T=0;
+function drawBg(groundY,scroll){
+  ctx.fillStyle='#C9B3EC';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,.85)';
+  for(let i=0;i<14;i++){const sx=(i*97)%W,sy=(i*53)%Math.max(60,H*0.45);if(Math.sin(T*2+i)>0.2)ctx.fillRect(sx,sy,3,3);}
+  ctx.fillStyle='rgba(247,236,255,.9)';
+  for(let i=0;i<4;i++){const cx=Math.round(((i*W*0.37+T*(12+i*4))%(W+160))-80),cy=60+i*55;ctx.fillRect(cx-36,cy-8,84,16);ctx.fillRect(cx-20,cy-20,48,12);}
+  if(groundY<H){
+    ctx.fillStyle='#A98BD8';ctx.fillRect(0,groundY,W,H-groundY);
+    ctx.fillStyle='#8F6CC6';ctx.fillRect(0,groundY,W,6);
+    for(let i=0;i<Math.ceil(W/70)+2;i++){const gx=Math.round(((i*70-(scroll||0))%(W+140)+W+140)%(W+140)-70),gy=groundY+18+(i%2)*14;
+      ctx.fillStyle='#F49AC1';ctx.fillRect(gx-4,gy,4,4);ctx.fillRect(gx+4,gy,4,4);ctx.fillRect(gx,gy-4,4,4);ctx.fillRect(gx,gy+4,4,4);ctx.fillStyle='#FFD54F';ctx.fillRect(gx,gy,4,4);}
+  }
+}
+function hud(score,extra){
+  ctx.font='22px "Press Start 2P",monospace';ctx.textBaseline='top';ctx.lineWidth=5;ctx.strokeStyle='#fff';ctx.fillStyle='#5B3A8E';
+  ctx.textAlign='left';ctx.strokeText(score,18,16);ctx.fillText(score,18,16);
+  if(extra){ctx.textAlign='right';ctx.font='26px '+EMOJI_FONT;ctx.fillText(extra,W-16,18);}
+}
+
+const ITEMS=['🍊','🦆','🐱','🎂','🍉','🐸','🐢','🧁','🐥','🍩'];
+
+/* ---------- 1. Torre chill ---------- */
+function Torre(){
+  const M=Math.min(W,H),S=Math.min(84,M*0.15),cw=px16(Math.min(224,M*0.4)),ci=capInfo(cw),G=H-70;
+  const g={id:'torre',name:'Torre chill',msg:'¡Se cayó la torre!',score:0,over:false};
+  const stack=[];let ph=0,speed=1.2,cam=0,cur=null,lose=null,wait=0;
+  const top=()=>stack.length?{cx:stack[stack.length-1].x,y:stack[stack.length-1].y-S*0.82,half:S*0.5}:{cx:W/2,y:G-ci.top,half:ci.half};
+  function spawn(){cur={ch:ITEMS[Math.floor(Math.random()*ITEMS.length)],x:W/2,y:top().y-150,vy:0,drop:false};ph=Math.random()*6;}
+  spawn();
+  g.down=()=>{if(!g.over&&cur&&!cur.drop&&!lose){cur.drop=true;beep(520,.05,'sine',.1);}};
+  g.update=dt=>{
+    const tp=top();const camT=Math.max(0,H*0.6-tp.y);cam+=(camT-cam)*Math.min(1,dt*4);
+    if(lose){lose.vy+=1800*dt;lose.y+=lose.vy*dt;lose.x+=lose.vx*dt;lose.r+=lose.vr*dt;lose.t+=dt;if(lose.t>1&&!g.over)endGame(g);return;}
+    if(!cur){wait-=dt;if(wait<=0)spawn();return;}
+    if(!cur.drop){ph+=dt*speed;cur.x=W/2+Math.sin(ph)*(W/2-S*0.9);cur.y=tp.y-150;}
+    else{
+      cur.vy+=1900*dt;cur.y+=cur.vy*dt;
+      if(cur.y>=tp.y){
+        const d=cur.x-tp.cx;
+        if(Math.abs(d)<=tp.half+S*0.32){stack.push({ch:cur.ch,x:cur.x,y:tp.y});g.score++;beep(600+Math.min(g.score,30)*18,.1,'triangle');speed=Math.min(3.8,speed+0.08);cur=null;wait=0.25;}
+        else{const sg=d<0?-1:1;lose={ch:cur.ch,x:cur.x,y:tp.y,vx:sg*170,vy:-220,r:0,vr:sg*7,t:0};cur=null;beep(170,.4,'sawtooth',.1);}
+      }
+    }
+  };
+  g.draw=()=>{
+    drawBg(G+cam,0);
+    drawCapy(ctx,W/2-ci.dx,G+cam,cw,!!lose);
+    stack.forEach(p=>emo(ctx,p.ch,p.x,p.y+cam-S*0.42,S));
+    if(cur){
+      if(!cur.drop){const tp=top();ctx.strokeStyle='rgba(91,58,142,.4)';ctx.setLineDash([4,7]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cur.x,cur.y+cam+4);ctx.lineTo(cur.x,tp.y+cam);ctx.stroke();ctx.setLineDash([]);}
+      emo(ctx,cur.ch,cur.x,cur.y+cam-S*0.42,S);
+    }
+    if(lose){ctx.save();ctx.translate(lose.x,lose.y+cam-S*0.42);ctx.rotate(lose.r);emo(ctx,lose.ch,0,0,S);ctx.restore();}
+    hud(g.score+' 🏗️');
+  };
+  return g;
+}
+
+/* ---------- 2. Capijuli brinca ---------- */
+function Brinca(){
+  const cw=px16(Math.min(144,Math.min(W,H)*0.24)),G=H-90,X=Math.max(70,W*0.2);
+  const g={id:'brinca',name:'Capijuli brinca',msg:'¡Ups, Capijuli tropezó!',score:0,over:false};
+  let y=0,vy=0,jumps=0,speed=270,obs=[],next=1.5,scroll=0,hit=null,pops=[];
+  g.down=()=>{if(g.over||hit)return;if(jumps<2){vy=jumps?-660:-780;jumps++;beep(jumps===1?440:580,.07,'square',.06);}};
+  function spawn(){
+    const r=Math.random();
+    if(r<0.2){obs.push({t:'nar',x:W+20,w:34,h:34,yb:G-110-Math.random()*40});return;}
+    const k=Math.random();
+    if(k<0.4)obs.push({t:'roca',x:W+20,w:38,h:34,yb:G});
+    else if(k<0.75)obs.push({t:'croc',x:W+20,w:56,h:26,yb:G});
+    else obs.push({t:'charco',x:W+20,w:68,h:8,yb:G});
+  }
+  g.update=dt=>{
+    T+=0;if(hit){hit.t+=dt;if(hit.t>0.8&&!g.over)endGame(g);return;}
+    speed=Math.min(620,speed+7*dt);scroll+=speed*dt;
+    vy+=2300*dt;y+=vy*dt;if(y>0){y=0;vy=0;jumps=0;}
+    next-=dt;if(next<=0){spawn();next=(0.85+Math.random()*1.1)*(300/speed)+0.4;}
+    const cb=capBox(X,G+y,cw);
+    for(const o of obs){
+      o.x-=speed*dt;
+      const ob={l:o.x+4,r:o.x+o.w-4,t:o.yb-o.h,b:o.yb};
+      if(o.t==='nar'){if(!o.got&&hitBox(cb,ob)){o.got=true;g.score++;pops.push({x:o.x,y:o.yb-40,t:0});beep(880,.08,'triangle');}continue;}
+      if(hitBox(cb,ob)){hit={t:0};beep(150,.4,'sawtooth',.1);return;}
+      if(!o.p&&o.x+o.w<cb.l){o.p=true;g.score++;}
+    }
+    obs=obs.filter(o=>o.x>-100&&!o.got);
+    pops.forEach(p=>p.t+=dt);pops=pops.filter(p=>p.t<0.6);
+  };
+  g.draw=()=>{
+    drawBg(G,scroll);
+    for(const o of obs){
+      if(o.t==='roca')emo(ctx,'🪨',o.x+o.w/2,o.yb-18,44);
+      else if(o.t==='croc')emo(ctx,'🐊',o.x+o.w/2,o.yb-16,58);
+      else if(o.t==='charco'){ctx.fillStyle='#4FA3E0';ctx.beginPath();ctx.ellipse(o.x+o.w/2,G+2,o.w/2,8,0,0,Math.PI*2);ctx.fill();}
+      else emo(ctx,'🍊',o.x+o.w/2,o.yb-o.h/2,32);
+    }
+    drawCapy(ctx,X,G+y,cw,!!hit);
+    ctx.font='800 22px system-ui,sans-serif';ctx.fillStyle='#E8803A';ctx.textAlign='center';
+    pops.forEach(p=>ctx.fillText('+1',p.x+16,p.y-p.t*50));
+    hud(g.score+' ⭐');
+  };
+  return g;
+}
+
+/* ---------- 3. Atrapa la lluvia ---------- */
+function Atrapa(){
+  const cw=px16(Math.min(160,Math.min(W,H)*0.28)),G=H-60,IS=Math.round(Math.min(60,Math.min(W,H)*0.1));
+  const g={id:'atrapa',name:'Atrapa la lluvia',msg:'¡Se acabaron las vidas!',score:0,over:false};
+  let x=W/2,tx=W/2,items=[],next=0.6,lives=3,flash=0,pops=[],endT=-1;
+  g.down=px=>{tx=px;};g.move=px=>{tx=px;};g.nudge=d=>{tx=Math.max(cw/2,Math.min(W-cw/2,tx+d*W*0.14));};
+  function spawn(){
+    const badP=Math.min(0.38,0.2+g.score*0.004),r=Math.random();
+    const t=r<badP?'bad':r<badP+0.12?'san':'nar';
+    const ch=t==='bad'?(Math.random()<0.5?'🐝':'🌵'):t==='san'?'🍉':'🍊';
+    items.push({t,ch,x:30+Math.random()*(W-60),y:-30,vy:150+Math.min(300,g.score*5)+Math.random()*50});
+  }
+  g.update=dt=>{
+    if(endT>=0){endT+=dt;if(endT>0.6&&!g.over)endGame(g);return;}
+    x+=(tx-x)*Math.min(1,dt*10);x=Math.max(cw/2,Math.min(W-cw/2,x));
+    flash=Math.max(0,flash-dt);
+    next-=dt;if(next<=0){spawn();next=Math.max(0.4,0.95-g.score*0.012);}
+    const catchY=G-capInfo(cw).h*0.75;
+    for(const it of items){
+      it.y+=it.vy*dt;
+      if(!it.done&&it.y>=catchY-12&&it.y<=catchY+28&&Math.abs(it.x-x)<cw*0.45){
+        it.done=true;
+        if(it.t==='bad'){lives--;flash=0.6;beep(160,.3,'sawtooth',.1);if(lives<=0)endT=0;}
+        else{const p=it.t==='san'?3:1;g.score+=p;pops.push({txt:'+'+p,x:it.x,y:catchY,t:0});beep(it.t==='san'?990:760,.08,'triangle');}
+      }
+    }
+    items=items.filter(it=>!it.done&&it.y<H+40);
+    pops.forEach(p=>p.t+=dt);pops=pops.filter(p=>p.t<0.6);
+  };
+  g.draw=()=>{
+    drawBg(G,0);
+    items.forEach(it=>emo(ctx,it.ch,it.x,it.y,IS));
+    if(!(flash>0&&Math.floor(flash*12)%2===0))drawCapy(ctx,x,G,cw,lives<=0);
+    ctx.font='800 24px system-ui,sans-serif';ctx.fillStyle='#E8803A';ctx.textAlign='center';
+    pops.forEach(p=>ctx.fillText(p.txt,p.x,p.y-30-p.t*50));
+    hud(g.score+' 🍊','❤️'.repeat(Math.max(0,lives)));
+  };
+  return g;
+}
+
+/* ---------- Control ---------- */
+const MAKERS={torre:Torre,brinca:Brinca,atrapa:Atrapa};
+let game=null,lastId='torre';
+const $=id=>document.getElementById(id);
+function start(id){lastId=id;$('menu').classList.add('hide');$('over').classList.add('hide');game=MAKERS[id]();beep(1,.01,'sine',.001);}
+function toMenu(){game=null;$('over').classList.add('hide');refreshRecs();$('menu').classList.remove('hide');}
+function refreshRecs(){['torre','brinca','atrapa'].forEach(k=>$('r_'+k).textContent=getRec(k));}
+function endGame(g){
+  g.over=true;
+  const prev=getRec(g.id),nuevo=g.score>prev;if(nuevo)setRec(g.id,g.score);
+  $('o_msg').textContent=g.msg;$('o_game').textContent=g.name;$('o_score').textContent=g.score;
+  $('o_rec').textContent=Math.max(prev,g.score);$('newrec').classList.toggle('hide',!nuevo||g.score===0);
+  const txt='¡Hice '+g.score+' puntos en "'+g.name+'" de Capijuli! 🌸 ¿Me ganas? '+location.href;
+  $('o_share').href='https://wa.me/?text='+encodeURIComponent(txt);
+  $('o_again').onclick=()=>start(g.id);
+  setTimeout(()=>{if(game===g)$('over').classList.remove('hide');},350);
+}
+
+cv.addEventListener('pointerdown',e=>{if(game&&!game.over)game.down(e.clientX,e.clientY);e.preventDefault();});
+cv.addEventListener('pointermove',e=>{if(game&&game.move&&!game.over)game.move(e.clientX);});
+addEventListener('keydown',e=>{
+  if(!game||game.over)return;
+  if(e.code==='ArrowLeft'&&game.nudge)game.nudge(-1);
+  else if(e.code==='ArrowRight'&&game.nudge)game.nudge(1);
+  else if(e.code==='Space'||e.code==='ArrowUp'){game.down(W/2,0);e.preventDefault();}
+});
+
+function drawMini(){
+  const m=$('mini'),c=m.getContext('2d');c.clearRect(0,0,m.width,m.height);
+  const w=144,ci=capInfo(w);drawCapy(c,160,282,w);
+  emo(c,'🍊',160,282-ci.top-24,50);
+}
+drawMini();refreshRecs();
+
+let last=0;
+function loop(t){
+  const dt=Math.min(0.033,(t-last)/1000||0);last=t;T+=dt;
+  if(game){game.update(dt);game.draw();}
+  else{drawBg(H-70,0);}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
