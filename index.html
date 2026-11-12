@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Capijuli</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#C9B3EC;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;overscroll-behavior:none}
@@ -67,6 +69,7 @@ body.piano #snd{display:none}
   <canvas id="mini" width="320" height="290" style="width:140px;height:127px"></canvas>
   <h1>CapiJuli</h1>
   <p class="sub">¿A qué jugamos?</p>
+  <p id="ver" style="position:fixed;left:10px;bottom:6px;margin:0;font-size:11px;color:#A898C4"></p>
   <button class="btn b1" onclick="start('torre')">🍊 Torre chill<small>Toca para soltar · Récord: <span id="r_torre">0</span></small></button>
   <button class="btn b2" onclick="start('brinca')">🐊 Capijuli brinca<small>Toca para brincar · Récord: <span id="r_brinca">0</span></small></button>
   <button class="btn b3" onclick="start('atrapa')">🍉 Atrapa la lluvia<small>Mueve el dedo · Récord: <span id="r_atrapa">0</span></small></button>
@@ -120,6 +123,14 @@ body.piano #snd{display:none}
 
 <script>
 const $=id=>document.getElementById(id);
+const VERSION='2026-11-11.9';
+document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('ver');if(v)v.textContent='v '+VERSION;});
+async function checkUpdate(){
+  if(!/^https?:/.test(location.protocol)||/claude/.test(location.host))return;
+  try{const r=await fetch(location.pathname+'?t='+Date.now(),{cache:'no-store'});const t=await r.text();const m=t.match(/const VERSION='([^']+)'/);
+    if(m&&m[1]!==VERSION&&!(game&&!game.over))location.replace(location.pathname+'?v='+encodeURIComponent(m[1]));}catch(e){}
+}
+setTimeout(checkUpdate,1500);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate();});
 // Capijuli en pixel art (16 x 24)
 const PAL={H:'#3B2416',h:'#6A4630',F:'#C98146',f:'#A0632F',E:'#B06A33',G:'#D9D3E8',L:'#2A2433',N:'#6E4A3C',T:'#FFFFFF',S:'#D2CFD6',s:'#ADAAB5',P:'#8E5CC9',K:'#5A3A26'};
 const SPR=[
