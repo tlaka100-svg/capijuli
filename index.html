@@ -537,7 +537,8 @@ function startArma(lang){
   $('a_rep').style.background=lang==='en'?'#3A6FD8':'#C0569A';
   $('arma').classList.remove('hide');showA();
 }
-const L1=ch=>A.lang==='en'?EN(ch.toUpperCase()):ES(LN[ch]||ch);
+const LN_EN={a:'ay',b:'bee',c:'see',d:'dee',e:'ee',f:'eff',g:'jee',h:'aitch',i:'eye',j:'jay',k:'kay',l:'el',m:'em',n:'en',o:'oh',p:'pee',q:'cue',r:'ar',s:'ess',t:'tee',u:'you',v:'vee',w:'double you',x:'ex',y:'why',z:'zee'};
+const L1=ch=>A.lang==='en'?EN(LN_EN[ch]||ch):ES(LN[ch]||ch);
 function aPrompt(full){
   const w=A.ws[A.i],ch=w[A.pos],parts=[];
   if(A.lang==='en'){
