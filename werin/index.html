@@ -60,10 +60,11 @@ h2{font-size:30px;margin:0;color:#1F4FA8}
 
 <div id="fx"></div>
 <button id="back" class="hide" aria-label="Menú">←</button>
+<button id="mag" aria-label="Música mágica" style="position:fixed;right:70px;bottom:12px;z-index:50;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.9);font-size:22px;box-shadow:0 2px 6px rgba(0,0,0,.15);cursor:pointer">🪄</button>
 <button id="snd" aria-label="Sonido">🔊</button>
 
 <script>
-const VERSION='2026-11-12.1';
+const VERSION='2026-11-12.11';
 const $=id=>document.getElementById(id);
 $('ver').textContent='v'+VERSION;
 const cv=$('c'),ctx=cv.getContext('2d');let W=0,H=0;
@@ -138,14 +139,27 @@ function sweep(f1,f2,d,type,v){if(!ensureAC())return;try{const t=AC.currentTime,
 function fanfare(){if(!ensureAC())return;const t=AC.currentTime;[[67,0],[72,.12],[76,.24],[79,.36],[76,.52],[79,.64]].forEach(([m,d])=>{try{tone(mf(m),t+d,.22,'square',.07);tone(mf(m-12),t+d,.22,'triangle',.08);}catch(e){}});}
 const mf=m=>440*Math.pow(2,(m-69)/12);
 const SONGS={
+  magia:{bpm:138,bar:6,
+    lead:[76,0,0,74,72,0, 71,0,72,0,69,0, 72,0,0,77,76,0, 74,0,72,0,71,0, 69,0,72,0,76,0, 77,0,0,81,79,77, 76,0,74,0,68,0, 69,0,0,0,0,0,
+          81,0,0,79,77,0, 76,0,77,0,74,0, 72,0,0,74,76,0, 71,0,0,0,68,0, 69,0,71,0,72,0, 74,0,72,0,71,0, 72,0,71,0,68,0, 69,0,0,0,0,0],
+    bass:[45,45,41,40,45,38,40,45, 41,45,45,40,45,38,40,45],
+    ch:{45:[57,60,64],41:[57,60,65],40:[56,59,64],38:[57,62,65]}},
   menu:{bpm:110,lead:[72,0,74,76,79,0,76,0, 77,0,76,74,72,0,0,0, 72,0,74,76,79,0,84,0, 81,79,77,76,74,0,0,0],bass:[48,53,48,43]},
   game:{bpm:150,lead:[72,72,79,79,81,81,79,0, 77,77,76,76,74,74,72,0, 79,79,77,77,76,76,74,0, 79,79,77,77,76,76,74,0],bass:[48,41,48,43]},
   robot:{bpm:120,lead:[60,0,67,0,72,0,67,0, 62,0,69,0,74,0,69,0, 64,0,71,0,76,0,71,0, 65,67,69,71,72,0,0,0],bass:[36,38,40,41]}
 };
 const music={song:null,step:0,next:0,timer:null};
-function playSong(name){if(music.song===name)return;music.song=name;music.step=0;if(!name)return;if(!ensureAC())return;music.next=AC.currentTime+.08;if(!music.timer)music.timer=setInterval(musicTick,60);}
-function musicTick(){if(!AC||!music.song||!soundOn)return;const s=SONGS[music.song],dt=60/s.bpm/2;
+let magicOn=false;try{magicOn=localStorage.getItem('werin_magia')==='1';}catch(e){}
+function playSong(name){music.req=name;if(magicOn&&name)name='magia';if(music.song===name)return;music.song=name;music.step=0;if(!name)return;if(!ensureAC())return;music.next=AC.currentTime+.08;if(!music.timer)music.timer=setInterval(musicTick,60);}
+function musicTick(){
+  if(!AC||!music.song||!soundOn)return;
+  const s=SONGS[music.song],dt=60/s.bpm/2;
   if(music.next<AC.currentTime-.1)music.next=AC.currentTime+.05;
+  if(s.bar){while(music.next<AC.currentTime+.25){const i=music.step%s.lead.length,n=s.lead[i],t=music.next,bi=Math.floor(i/s.bar),bs=i%s.bar,b=s.bass[bi%s.bass.length];
+      if(n){tone(mf(n),t,dt*3.2,'sine',.09);tone(mf(n)*2,t,dt*1.2,'sine',.025);tone(mf(n)*3,t,dt*.5,'triangle',.008);}
+      if(bs===0)tone(mf(b),t,dt*5,'triangle',.08);
+      if(bs===2||bs===4)(s.ch[b]||[]).forEach(c=>tone(mf(c),t,dt*1.6,'sine',.022));
+      music.next+=dt;music.step++;}return;}
   while(music.next<AC.currentTime+.25){const i=music.step%s.lead.length,n=s.lead[i];
     if(n)tone(mf(n),music.next,dt*.9,'square',.026);
     if(i%8===0)tone(mf(s.bass[Math.floor(i/8)%s.bass.length]),music.next,dt*7,'triangle',.06);
@@ -361,6 +375,10 @@ function loop(t){const dt=Math.min(0.033,(t-last)/1000||0);last=t;T+=dt;
   else{sky();city(H,T*40);mt+=dt;if(mt>.25){mt=0;drawMini('mini',Math.floor(T*4)%2?1:2);}}
   requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
+
+function setMagic(on){magicOn=on;try{localStorage.setItem('werin_magia',on?'1':'0');}catch(e){}$('mag').style.background=on?'#FFE27A':'rgba(255,255,255,.9)';$('mag').style.boxShadow=on?'0 0 0 3px #8E5CC9':'0 2px 6px rgba(0,0,0,.15)';const r=music.req;music.song=null;if(r)playSong(r);}
+setMagic(magicOn);
+$('mag').addEventListener('click',e=>{e.stopPropagation();unlockAudio();setMagic(!magicOn);if(!music.song)playSong(typeof game!=='undefined'&&game?'game':'menu');});
 </script>
 </body>
 </html>
