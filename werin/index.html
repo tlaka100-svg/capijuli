@@ -64,7 +64,7 @@ h2{font-size:30px;margin:0;color:#1F4FA8}
 <button id="snd" aria-label="Sonido">🔊</button>
 
 <script>
-const VERSION='2026-11-12.11';
+const VERSION='2026-11-12.12';
 const $=id=>document.getElementById(id);
 $('ver').textContent='v'+VERSION;
 const cv=$('c'),ctx=cv.getContext('2d');let W=0,H=0;
@@ -74,27 +74,27 @@ const EMOJI_FONT='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-s
 function emo(c,ch,x,y,size){c.font=size+'px '+EMOJI_FONT;c.textAlign='center';c.textBaseline='middle';c.fillText(ch,x,y);}
 
 /* ---------- Werin pixel ---------- */
-const PAL={H:'#7A4A22',h:'#A86E36',F:'#F4CBA2',f:'#DDA67C',E:'#2E2118',W:'#FFFFFF',m:'#B5483D',B:'#2F6FE0',b:'#1F4FA8',Y:'#FFD23F',R:'#E5484D',r:'#B8323A',K:'#FFFFFF'};
+const PAL={H:'#9A6634',h:'#C48A4C',s:'#5E3A1A',F:'#F6D2B0',f:'#F0A98E',E:'#2E2118',W:'#FFFFFF',m:'#B5483D',B:'#2F6FE0',b:'#1F4FA8',Y:'#FFD23F',R:'#E5484D',r:'#B8323A',K:'#FFFFFF'};
 const TOP=[
-"...hHhHhHhHh....",
-"..hHHhHHhHHhH...",
-".hHHHHhHHHHHHh..",
-".HHhHHHHHHhHHH..",
-".HHFFFFFFFFFHH..",
-".HFFFFFFFFFFFH..",
-".HFFEEFFFFEEFH..",
-".HFFEKFFFFEKFH..",
-"..FfFFFFFFFFfF..",
-"..FFFmWWWWmFFF..",
-"...FFFmmmmFFF...",
-"....FFFFFFFF....",
+"...hH.hHh.Hh....",
+"..hHHhHHHhHHHh..",
+".hHsHHhHsHHhHsH.",
+"hHHHsHHHHsHHHsHh",
+"HHsHFHHFFHHFHsHH",
+"HHHFFFFFFFFFFHHH",
+"sHFFFFFFFFFFFFHs",
+"sHFEEFFFFFFEEFHs",
+".HFEKFFFFFFEKFH.",
+".HFfFFFFFFFFfFH.",
+"..FFmWWWWWWmFF..",
+"...FFmWWWWmFF...",
+"....FFmmmmFF....",
 "...bBBBBBBBBb...",
 "..BBBBBYYBBBBB..",
 "..BBBBYYBBBBBB..",
-"..BBBYYYYYBBBB..",
-"..FBBBBYYBBBBF..",
-"...bBBBYBBBBb...",
-"....bBBBBBBb...."];
+"..FBBYYYYYBBBF..",
+"...bBBBYYBBBb...",
+"....bBBYBBBb...."];
 const LEGS=[[
 "....BBB..BBB....",
 "....BBB..BBB....",
