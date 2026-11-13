@@ -36,7 +36,7 @@ h2{font-size:28px;margin:0;color:#5B3A8E}
 #pbar{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:8px;align-items:center;z-index:6}
 #pbar button{border:0;background:rgba(255,255,255,.92);border-radius:12px;padding:8px 12px;font-size:18px;font-weight:700;color:#5B3A8E;cursor:pointer;font-family:inherit}
 #pb_title{flex:1;text-align:center;font-weight:800;color:#5B3A8E;background:rgba(255,255,255,.75);border-radius:12px;padding:8px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.piano #snd{display:none}
+body.piano #snd,body.piano #mag{display:none}
 .b5{background:#2FA89A}
 #l_row{display:flex;align-items:center;gap:14px;justify-content:center}
 #l_letter{font-size:min(52px,9vh);font-weight:800;color:#8E5CC9;background:#fff;border-radius:18px;padding:2px 18px;border:3px solid #CDB8EE;min-width:70px}
@@ -109,6 +109,7 @@ body.piano #snd{display:none}
 <div id="fx"></div>
 <div id="pbar" class="hide"><button id="pb_menu">←</button><span id="pb_title"></span><button id="pb_mel">🎵</button><button id="pb_pause">⏸</button></div>
 
+<button id="mag" aria-label="Música mágica" style="position:fixed;right:70px;bottom:12px;z-index:50;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.9);font-size:22px;box-shadow:0 2px 6px rgba(0,0,0,.15);cursor:pointer">🪄</button>
 <button id="snd" aria-label="Sonido">🔊</button>
 
 <div id="over" class="ov hide">
@@ -124,7 +125,7 @@ body.piano #snd{display:none}
 
 <script>
 const $=id=>document.getElementById(id);
-const VERSION='2026-11-11.10';
+const VERSION='2026-11-12.11';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('ver');if(v)v.textContent='v '+VERSION;});
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol)||/claude/.test(location.host))return;
@@ -198,16 +199,27 @@ function tone(f,t,d,type,v){const o=AC.createOscillator(),g=AC.createGain();o.ty
 function beep(f,d,type,v){if(!ensureAC())return;try{tone(f,AC.currentTime,d||.08,type||'sine',v||.14);}catch(e){}}
 const mf=m=>440*Math.pow(2,(m-69)/12);
 const SONGS={
+  magia:{bpm:138,bar:6,
+    lead:[76,0,0,74,72,0, 71,0,72,0,69,0, 72,0,0,77,76,0, 74,0,72,0,71,0, 69,0,72,0,76,0, 77,0,0,81,79,77, 76,0,74,0,68,0, 69,0,0,0,0,0,
+          81,0,0,79,77,0, 76,0,77,0,74,0, 72,0,0,74,76,0, 71,0,0,0,68,0, 69,0,71,0,72,0, 74,0,72,0,71,0, 72,0,71,0,68,0, 69,0,0,0,0,0],
+    bass:[45,45,41,40,45,38,40,45, 41,45,45,40,45,38,40,45],
+    ch:{45:[57,60,64],41:[57,60,65],40:[56,59,64],38:[57,62,65]}},
   menu:{bpm:104,lead:[72,0,76,79,81,79,76,0, 74,0,77,81,79,77,74,0, 72,0,76,79,84,81,79,76, 74,76,74,71,72,0,0,0],bass:[48,50,48,43]},
   game:{bpm:140,lead:[76,79,81,79,76,74,72,74, 76,76,79,76,74,72,74,0, 72,74,76,79,81,84,81,79, 76,74,72,74,72,0,67,0],bass:[48,45,41,43]},
   leer:{bpm:88,lead:[67,0,72,0,76,0,74,72, 69,0,72,0,74,0,0,0, 67,0,72,0,76,0,79,77, 76,74,72,0,0,0,0,0],bass:[48,41,48,43]}
 };
 const music={song:null,step:0,next:0,timer:null};
-function playSong(name){if(music.song===name)return;music.song=name;music.step=0;if(!name)return;if(!ensureAC())return;music.next=AC.currentTime+.08;if(!music.timer)music.timer=setInterval(musicTick,60);}
+let magicOn=false;try{magicOn=localStorage.getItem('capijuli_magia')==='1';}catch(e){}
+function playSong(name){music.req=name;if(magicOn&&name)name='magia';if(music.song===name)return;music.song=name;music.step=0;if(!name)return;if(!ensureAC())return;music.next=AC.currentTime+.08;if(!music.timer)music.timer=setInterval(musicTick,60);}
 function musicTick(){
   if(!AC||!music.song||!soundOn)return;
   const s=SONGS[music.song],dt=60/s.bpm/2;
   if(music.next<AC.currentTime-.1)music.next=AC.currentTime+.05;
+  if(s.bar){while(music.next<AC.currentTime+.25){const i=music.step%s.lead.length,n=s.lead[i],t=music.next,bi=Math.floor(i/s.bar),bs=i%s.bar,b=s.bass[bi%s.bass.length];
+      if(n){tone(mf(n),t,dt*3.2,'sine',.09);tone(mf(n)*2,t,dt*1.2,'sine',.025);tone(mf(n)*3,t,dt*.5,'triangle',.008);}
+      if(bs===0)tone(mf(b),t,dt*5,'triangle',.08);
+      if(bs===2||bs===4)(s.ch[b]||[]).forEach(c=>tone(mf(c),t,dt*1.6,'sine',.022));
+      music.next+=dt;music.step++;}return;}
   while(music.next<AC.currentTime+.25){
     const i=music.step%s.lead.length,n=s.lead[i];
     if(n)tone(mf(n),music.next,dt*.9,'square',.03);
@@ -726,6 +738,10 @@ function loop(t){
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+function setMagic(on){magicOn=on;try{localStorage.setItem('capijuli_magia',on?'1':'0');}catch(e){}$('mag').style.background=on?'#FFE27A':'rgba(255,255,255,.9)';$('mag').style.boxShadow=on?'0 0 0 3px #8E5CC9':'0 2px 6px rgba(0,0,0,.15)';const r=music.req;music.song=null;if(r)playSong(r);}
+setMagic(magicOn);
+$('mag').addEventListener('click',e=>{e.stopPropagation();unlockAudio();setMagic(!magicOn);if(!music.song&&!(game&&game.id==='piano'))playSong(game?'game':'menu');});
 </script>
 </body>
 </html>
