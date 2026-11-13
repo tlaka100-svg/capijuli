@@ -77,6 +77,7 @@ body.piano #snd,body.piano #mag{display:none}
   <button class="btn b4" onclick="start('leer')">📖 Lee con Capijuli<small>Toca la palabra · Récord: <span id="r_leer">0</span></small></button>
   <button class="btn b6" onclick="start('arma')">🔤 Arma la palabra<small>Toca las letras en orden · Récord: <span id="r_arma">0</span></small></button>
   <button class="btn b7" onclick="start('spell')">🇺🇸 Spelling en inglés<small>Tap the letters · Récord: <span id="r_spell">0</span></small></button>
+  <button class="btn" style="background:#5B3FA6" onclick="start('magia')">🪄 Juli la Maga<small>Toca con tu varita · Récord: <span id="r_magia">0</span></small></button>
   <button class="btn b5" onclick="start('piano')">🎹 Piano con Capijuli<small>Sigue las teclas de colores · Récord: <span id="r_piano">0</span></small></button>
 </div>
 
@@ -125,7 +126,7 @@ body.piano #snd,body.piano #mag{display:none}
 
 <script>
 const $=id=>document.getElementById(id);
-const VERSION='2026-11-12.11';
+const VERSION='2026-11-12.13';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('ver');if(v)v.textContent='v '+VERSION;});
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol)||/claude/.test(location.host))return;
@@ -538,7 +539,58 @@ $('pb_mel').onclick=()=>{if(game&&game.id==='piano'){game.melody=!game.melody;$(
 $('pb_pause').onclick=()=>{if(game&&game.togglePause)$('pb_pause').textContent=game.togglePause()?'▶️':'⏸';};
 
 /* ---------- Control ---------- */
-const MAKERS={torre:Torre,brinca:Brinca,atrapa:Atrapa,vuela:Vuela};
+/* ---------- Varita mágica (mago original) ---------- */
+const MAGIC_PAIRS=[['🐸','🦋'],['🥚','🐥'],['🎃','🍭'],['☁️','🌈'],['🪨','💎'],['🍂','🌸'],['🐛','🦋'],['🌑','🌟'],['🧦','🎁'],['🥕','🍰']];
+function drawMago(c,x,y,w,drawFn,wave){
+  const h=w*1.5;
+  c.fillStyle='#4B2C8F';c.beginPath();c.moveTo(x-w*.28,y-h*.46);c.lineTo(x+w*.28,y-h*.46);c.lineTo(x+w*.5,y-h*.06);c.lineTo(x-w*.5,y-h*.06);c.closePath();c.fill();
+  c.fillStyle='#FFD23F';c.fillRect(x-w*.36,y-h*.12,w*.72,w*.05);
+  drawFn(c,x,y,w);
+  const hb=y-h*.86,hw=w*1.05,hh=h*.5;
+  c.fillStyle='#5B3FA6';c.beginPath();c.moveTo(x-hw*.36,hb);c.lineTo(x+hw*.36,hb);c.lineTo(x+hw*.12,hb-hh*.7);c.lineTo(x+hw*.28,hb-hh);c.lineTo(x-hw*.02,hb-hh*.72);c.closePath();c.fill();
+  c.fillStyle='#3E2A7A';c.fillRect(x-hw*.55,hb-w*.02,hw*1.1,w*.1);
+  c.fillStyle='#FFD23F';[[-.12,.25],[.1,.45],[-.02,.6]].forEach(([dx,dy])=>{const sx=x+hw*dx,sy=hb-hh*dy,r=w*.045;c.fillRect(sx-r,sy-r*.3,r*2,r*.6);c.fillRect(sx-r*.3,sy-r,r*.6,r*2);});
+  const a=-0.9+(wave||0)*.5,hx=x+w*.4,hy=y-h*.42,L=w*.75,tx=hx+Math.cos(a)*L,ty=hy+Math.sin(a)*L;
+  c.strokeStyle='#6B3E1E';c.lineWidth=Math.max(3,w*.07);c.beginPath();c.moveTo(hx,hy);c.lineTo(tx,ty);c.stroke();
+  c.globalAlpha=.35+.25*Math.sin(T*8);c.fillStyle='#FFF3A0';c.beginPath();c.arc(tx,ty,w*.22,0,7);c.fill();c.globalAlpha=1;
+  emo(c,'⭐',tx,ty,w*.3);
+  return {tx,ty};
+}
+function Magia(cfg){
+  const g={id:'magia',name:cfg.name,score:0,over:false};
+  const M=Math.min(W,H),ww=Math.max(48,Math.round(Math.min(110,M*.18)/16)*16),X=Math.max(70,W*.16),G=H-Math.max(40,H*.07);
+  let items=[],spawn=.4,time=45,beams=[],wave=0,tip={tx:X,ty:G-ww};
+  cfg.say(cfg.intro);
+  try{playSong('magia');}catch(e){}
+  const sz=()=>Math.max(54,Math.min(92,M*.13));
+  g.down=(x,y)=>{let best=null,bd=1e9;items.forEach(it=>{if(it.done)return;const d=Math.hypot(x-it.x,y-it.y);if(d<sz()*.85&&d<bd){bd=d;best=it;}});
+    if(best){best.done=1;g.score++;wave=1;beams.push({x:best.x,y:best.y,t:.35});
+      if(typeof AC!=='undefined'&&ensureAC()){const t0=AC.currentTime;[84,88,91,96].forEach((m,i)=>{try{tone(mf(m),t0+i*.05,.25,'sine',.06);}catch(e){}});}
+      sparks(best.x,best.y);
+      if(g.score%10===0){cfg.say('¡'+g.score+' hechizos! ¡Qué magia!');cfg.cheer(g.score);}}
+    else if(typeof beep==='function')beep(300,.05,'sine',.04);};
+  const sp=[];function sparks(x,y){for(let i=0;i<16;i++){const a=Math.random()*7,s=80+Math.random()*200;sp.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:.8,c:['#FFD23F','#FFFFFF','#C9A7FF','#7CFFE0'][i%4]});}}
+  g.update=dt=>{time-=dt;if(time<=0){endGame(g);return;}wave=Math.max(0,wave-dt*4);
+    spawn-=dt;if(spawn<=0){const p=MAGIC_PAIRS[Math.floor(Math.random()*MAGIC_PAIRS.length)];items.push({a:p[0],b:p[1],x:X+ww+Math.random()*(W-X-ww-sz()),y:H+sz(),ph:Math.random()*6,v:cfg.speed*(0.8+Math.random()*.4)*Math.max(.8,H/700),done:0});spawn=cfg.every*(0.7+Math.random()*.6);}
+    items.forEach(it=>{if(it.done){it.done+=dt;it.y-=dt*30;}else{it.y-=it.v*dt;it.x+=Math.sin(T*2+it.ph)*20*dt;}});
+    items=items.filter(it=>it.y>-sz()&&it.done<1.4);
+    beams.forEach(b=>b.t-=dt);beams=beams.filter(b=>b.t>0);
+    for(let i=sp.length-1;i>=0;i--){const p=sp[i];p.t-=dt;if(p.t<=0){sp.splice(i,1);continue;}p.vy+=200*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}};
+  g.draw=()=>{const gr=ctx.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#1B1440');gr.addColorStop(1,'#4A2F86');ctx.fillStyle=gr;ctx.fillRect(0,0,W,H);
+    for(let i=0;i<40;i++){const sx=(i*137)%W,sy=(i*71)%(H*.8);ctx.globalAlpha=.4+.6*Math.abs(Math.sin(T*1.5+i));ctx.fillStyle='#fff';ctx.fillRect(sx,sy,3,3);}ctx.globalAlpha=1;
+    ctx.fillStyle='#FFF4C2';ctx.beginPath();ctx.arc(W-90,90,42,0,7);ctx.fill();ctx.fillStyle='#1B1440';ctx.beginPath();ctx.arc(W-72,78,38,0,7);ctx.fill();
+    ctx.fillStyle='#2A1B5C';ctx.fillRect(0,G,W,H-G);ctx.fillStyle='#3B2878';ctx.fillRect(0,G,W,5);
+    items.forEach(it=>{const s=sz();if(it.done){ctx.globalAlpha=Math.max(0,1-(it.done-.9)*2);emo(ctx,it.b,it.x,it.y,s*(1+Math.min(.3,it.done)));ctx.globalAlpha=1;}
+      else{ctx.globalAlpha=.25;ctx.fillStyle='#C9A7FF';ctx.beginPath();ctx.arc(it.x,it.y,s*.6,0,7);ctx.fill();ctx.globalAlpha=1;emo(ctx,it.a,it.x,it.y,s);}});
+    tip=drawMago(ctx,X,G,ww,cfg.draw,wave);
+    beams.forEach(b=>{ctx.globalAlpha=b.t/.35;ctx.strokeStyle='#FFF3A0';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(tip.tx,tip.ty);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;});
+    sp.forEach(p=>{ctx.fillStyle=p.c;ctx.fillRect(p.x-3,p.y-3,6,6);});
+    const tw=Math.min(W*.5,300);ctx.fillStyle='rgba(255,255,255,.3)';ctx.fillRect(W/2-tw/2,24,tw,12);ctx.fillStyle='#FFD23F';ctx.fillRect(W/2-tw/2,24,tw*Math.max(0,time)/45,12);
+    cfg.hud(g.score);};
+  return g;
+}
+
+const MAKERS={torre:Torre,brinca:Brinca,atrapa:Atrapa,vuela:Vuela,magia:()=>Magia({name:'Juli la Maga',speed:105,every:.75,intro:'¡Eres Juli la Maga! Toca las cosas con tu varita para convertirlas en algo mágico.',say:speak,draw:(c,x,y,w)=>drawCapy(c,x,y,w),hud:s=>hud(s+' ✨'),cheer:s=>fx('good','¡'+s+' hechizos!')})};
 let game=null,lastId='torre';
 const WORDS_EASY=['ga-to🐱','pa-to🦆','ca-sa🏠','lu-na🌙','sol☀️','pez🐟','o-so🐻','va-ca🐮','ma-no✋','ra-na🐸','da-do🎲','lo-bo🐺','pe-ra🍐','u-va🍇','ta-za☕','bo-ta👢','nu-be☁️','flor🌸','ca-ma🛏️','bo-ca👄','mo-no🐵','pan🍞','so-pa🍲','co-co🥥','pie🦶','pi-ña🍍','tren🚂'].map(parseW);
 const WORDS_HARD=['si-lla🪑','le-che🥛','que-so🧀','li-món🍋','to-ma-te🍅','glo-bo🎈','lla-ve🔑','li-bro📖','lá-piz✏️','pe-rro🐶','co-ne-jo🐰','tor-tu-ga🐢','a-be-ja🐝','po-lli-to🐥','ár-bol🌳','es-tre-lla⭐','co-ra-zón❤️','pe-lo-ta⚽','fo-ca🦭','re-loj⌚'].map(parseW);
@@ -697,7 +749,7 @@ function start(id){lastId=id;ensureAC();hideAll();
   if(id==='piano'){game=null;playSong('menu');showPianoSelect();return;}
   playSong('game');game=MAKERS[id]();}
 function toMenu(){game=null;L=null;try{speechSynthesis.cancel();}catch(e){}hideAll();refreshRecs();$('menu').classList.remove('hide');playSong('menu');}
-function refreshRecs(){['torre','brinca','atrapa','vuela','leer','arma','spell','piano'].forEach(k=>$('r_'+k).textContent=getRec(k));}
+function refreshRecs(){['torre','brinca','atrapa','vuela','magia','leer','arma','spell','piano'].forEach(k=>$('r_'+k).textContent=getRec(k));}
 function endGame(g){
   g.over=true;
   const prev=getRec(g.id),nuevo=g.score>prev;if(nuevo)setRec(g.id,g.score);
