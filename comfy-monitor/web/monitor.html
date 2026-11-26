@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comfy en vivo</title>
+<style>
+:root{
+  --bg:#f6f5f2;--panel:#fff;--ink:#1d1c1a;--muted:#6b6862;--line:#e4e1da;
+  --accent:#b8860b;--accent-soft:#f5ecd6;--ok:#2f7d4f;--ok-soft:#e3f2e8;
+  --err:#b3261e;--err-soft:#fbe4e2;--run:#2459b3;--run-soft:#e3ecfa;--cache:#7a7466;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141413;--panel:#1e1d1b;--ink:#ece9e2;--muted:#9c978d;--line:#33312d;
+  --accent:#e0b44c;--accent-soft:#3a3120;--ok:#6cc58f;--ok-soft:#1c3326;
+  --err:#ff8a80;--err-soft:#3d1f1d;--run:#8db3ff;--run-soft:#1d2a44;--cache:#8f897b;}}
+:root[data-theme="dark"]{
+  --bg:#141413;--panel:#1e1d1b;--ink:#ece9e2;--muted:#9c978d;--line:#33312d;
+  --accent:#e0b44c;--accent-soft:#3a3120;--ok:#6cc58f;--ok-soft:#1c3326;
+  --err:#ff8a80;--err-soft:#3d1f1d;--run:#8db3ff;--run-soft:#1d2a44;--cache:#8f897b;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px}
+.dot.on{background:var(--ok)}.dot.bad{background:var(--err)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:12.5px;white-space:nowrap}
+.grow{flex:1}
+input[type=text]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);width:200px}
+button{font:inherit;font-size:13px;padding:5px 11px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#1d1c1a;font-weight:600}
+button.danger{color:var(--err)}
+main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 10px;font-weight:600}
+h3{font-size:14px;margin:16px 0 8px}
+.muted{color:var(--muted)}
+.bar{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;width:0;background:var(--run);transition:width .2s}
+.now-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:6px}
+.now-node{font-size:18px;font-weight:600}
+.preview{margin-top:12px;display:flex;justify-content:center;background:var(--bg);border-radius:10px;min-height:120px;align-items:center;overflow:hidden}
+.preview img{max-width:100%;max-height:420px;display:block}
+.nodes{list-style:none;margin:12px 0 0;padding:0;max-height:300px;overflow:auto;border-top:1px solid var(--line)}
+.nodes li{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.pill{font-size:11.5px;padding:1px 7px;border-radius:99px;text-align:center;font-weight:600}
+.p-run{background:var(--run-soft);color:var(--run)}.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-err{background:var(--err-soft);color:var(--err)}.p-cache{background:var(--bg);color:var(--cache)}
+.p-wait{background:var(--bg);color:var(--muted)}
+.cls{color:var(--muted);font-size:12px}
+.err-box{margin-top:12px;background:var(--err-soft);color:var(--err);border-radius:10px;padding:10px 12px}
+.err-box pre{white-space:pre-wrap;font:12px/1.4 var(--mono);margin:8px 0 0;max-height:220px;overflow:auto;color:var(--ink)}
+.runs{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+.run{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px;border:1px solid var(--line);border-radius:9px;cursor:pointer;background:var(--panel);text-align:left;width:100%}
+.run.sel{border-color:var(--accent);background:var(--accent-soft)}
+.thumb{width:52px;height:52px;border-radius:6px;background:var(--bg);object-fit:cover;display:block}
+.outs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.outs figure{margin:0}.outs img,.outs video{width:100%;border-radius:8px;display:block;background:var(--bg)}
+.outs figcaption{font-size:11.5px;color:var(--muted);word-break:break-all;margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+td:first-child{color:var(--muted);width:38%}
+td.v{font-family:var(--mono);font-size:12px;word-break:break-word;white-space:pre-wrap}
+.chg td.v{background:var(--accent-soft)}
+.diff li{margin:3px 0;font-size:13px}.diff code{font:12px var(--mono)}
+textarea{width:100%;min-height:80px;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.hint{font-size:12.5px;color:var(--muted);background:var(--bg);border-radius:8px;padding:8px 10px;margin-top:10px}
+details summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Comfy en vivo</h1>
+  <span class="chip" id="conn"><span class="dot" id="connDot"></span><span id="connTxt">Conectando…</span></span>
+  <span class="chip" id="relayChip" title="El puente lee el detalle en vivo desde la pestaña de ComfyUI">Puente: —</span>
+  <span class="chip" id="queueChip">Cola: —</span>
+  <span class="chip" id="vramChip">Memoria: —</span>
+  <span class="grow"></span>
+  <input type="text" id="base" aria-label="Dirección de ComfyUI">
+  <button id="interrupt" class="danger" title="Detiene el trabajo que está corriendo">Interrumpir</button>
+  <button id="free" title="Descarga modelos y libera memoria">Liberar memoria</button>
+</header>
+
+<main>
+  <section class="card" id="nowCard">
+    <h2>Ahora</h2>
+    <div class="now-head">
+      <div class="now-node" id="nowNode">Sin trabajo corriendo</div>
+      <div class="muted" id="nowTime"></div>
+    </div>
+    <div class="bar"><i id="nowBar"></i></div>
+    <div class="muted" id="nowSteps" style="margin-top:4px;font-size:12.5px"></div>
+    <div class="preview" id="preview"><span class="muted">Aquí aparece la vista previa mientras genera</span></div>
+    <div id="nowErr"></div>
+    <ul class="nodes" id="nodes"></ul>
+    <div class="hint" id="relayHint">Para ver nodo por nodo y la vista previa, deja abierta la pestaña de ComfyUI: el puente manda los datos desde ahí.</div>
+  </section>
+
+  <section class="card">
+    <h2>Historial</h2>
+    <div class="runs" id="runs"><span class="muted">Cargando…</span></div>
+    <div id="detail"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
+};
+const defaultBase = location.protocol.startsWith("http") ? location.origin : "http://127.0.0.1:8188";
+let BASE = store.get("cm_base", defaultBase);
+$("#base").value = BASE;
+$("#base").addEventListener("change", (e) => { BASE = e.target.value.replace(/\/$/, ""); store.set("cm_base", BASE); reconnect(); refreshAll(); });
+
+function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1800); }
+async function api(path, opts) { const r = await fetch(BASE + path, opts); if (!r.ok) throw new Error(r.status + " " + path); const t = await r.text(); return t ? JSON.parse(t) : {}; }
+const fmtS = (ms) => ms == null ? "—" : ms < 1000 ? ms + " ms" : ms < 60000 ? (ms / 1000).toFixed(1) + " s" : Math.floor(ms / 60000) + " min " + Math.round((ms % 60000) / 1000) + " s";
+const fmtGB = (b) => (b / 1073741824).toFixed(1) + " GB";
+const viewUrl = (f) => `${BASE}/view?filename=${encodeURIComponent(f.filename)}&subfolder=${encodeURIComponent(f.subfolder || "")}&type=${encodeURIComponent(f.type || "output")}`;
+const isVideo = (n) => /\.(mp4|webm|mov|mkv)$/i.test(n);
+
+/* ---------- Estado en vivo ---------- */
+const live = { pid: null, prompt: null, nodes: new Map(), cur: null, prog: null, t0: null, err: null, done: false };
+const timings = store.get("cm_timings", {});   // pid -> [{id,title,cls,status,ms}]
+const notes = store.get("cm_notes", {});
+let lastRelay = 0, wsAlive = false;
+
+function nodeInfo(id) {
+  const n = live.prompt?.[id];
+  return { title: n?._meta?.title || n?.class_type || ("Nodo " + id), cls: n?.class_type || "" };
+}
+function touchNode(id) {
+  if (!live.nodes.has(id)) live.nodes.set(id, { id, ...nodeInfo(id), status: "wait", t0: null, ms: null });
+  return live.nodes.get(id);
+}
+async function startRun(pid) {
+  Object.assign(live, { pid, prompt: null, nodes: new Map(), cur: null, prog: null, t0: Date.now(), err: null, done: false });
+  try {
+    const q = await api("/queue");
+    const item = (q.queue_running || []).find((x) => x[1] === pid);
+    if (item) live.prompt = item[2];
+  } catch (_) {}
+  if (live.prompt) for (const id of Object.keys(live.prompt)) touchNode(id);
+  renderNow();
+}
+function closeCurrent(status = "ok") {
+  if (!live.cur) return;
+  const n = live.nodes.get(live.cur);
+  if (n && n.status === "run") { n.status = status; n.ms = Date.now() - n.t0; }
+  live.cur = null;
+}
+function finishRun(kind) {
+  closeCurrent(kind === "error" ? "err" : "ok");
+  live.done = kind || "ok"; live.prog = null;
+  if (live.pid) {
+    timings[live.pid] = [...live.nodes.values()].filter((n) => n.status !== "wait").map(({ id, title, cls, status, ms }) => ({ id, title, cls, status, ms }));
+    const keys = Object.keys(timings); while (keys.length > 40) delete timings[keys.shift()];
+    store.set("cm_timings", timings);
+  }
+  renderNow(); setTimeout(loadHistory, 400);
+}
+
+function handle(type, d) {
+  if (!d && type !== "hello") d = {};
+  switch (type) {
+    case "status": {
+      const q = d.status?.exec_info?.queue_remaining; if (q != null) $("#queueChip").textContent = "Cola: " + q; break;
+    }
+    case "execution_start": startRun(d.prompt_id); break;
+    case "execution_cached":
+      if (d.prompt_id !== live.pid) startRun(d.prompt_id);
+      for (const id of d.nodes || []) { const n = touchNode(id); n.status = "cache"; }
+      renderNow(); break;
+    case "executing": {
+      const pid = d.prompt_id ?? live.pid;
+      if (d.node == null) { if (pid === live.pid && !live.done) finishRun("ok"); break; }
+      if (pid && pid !== live.pid) { startRun(pid).then(() => handle(type, d)); break; }
+      closeCurrent("ok");
+      const n = touchNode(d.node); n.status = "run"; n.t0 = Date.now(); live.cur = d.node; live.prog = null;
+      renderNow(); break;
+    }
+    case "progress": live.prog = { v: d.value, m: d.max }; renderProgress(); break;
+    case "executed": { const n = live.nodes.get(d.node); if (n && n.status === "run") { n.status = "ok"; n.ms = Date.now() - n.t0; if (live.cur === d.node) live.cur = null; } renderNow(); break; }
+    case "execution_error":
+      live.err = d; if (d.node_id != null) { const n = touchNode(d.node_id); n.status = "err"; if (n.t0) n.ms = Date.now() - n.t0; }
+      live.cur = null; finishRun("error"); break;
+    case "execution_interrupted": finishRun("interrupted"); break;
+    case "execution_success": if (!live.done) finishRun("ok"); break;
+  }
+}
+
+/* Puente desde la pestaña de ComfyUI */
+const ch = ("BroadcastChannel" in window) ? new BroadcastChannel("comfy-monitor") : null;
+if (ch) ch.onmessage = (e) => {
+  lastRelay = Date.now();
+  const { type, data, blob } = e.data || {};
+  if (type === "preview" && blob) return showPreview(blob);
+  if (type && type !== "hello") handle(type, data);
+};
+setInterval(() => {
+  const on = Date.now() - lastRelay < 5000;
+  $("#relayChip").innerHTML = `<span class="dot ${on ? "on" : ""}"></span>Puente: ${on ? "activo" : "sin pestaña de ComfyUI"}`;
+  $("#relayHint").style.display = on ? "none" : "";
+}, 1000);
+
+/* WebSocket directo: recibe lo que ComfyUI difunde a todos (y trabajos lanzados por scripts) */
+let ws, wsTimer;
+const clientId = "monitor-" + Math.random().toString(36).slice(2, 10);
+function reconnect() {
+  try { ws && ws.close(); } catch (_) {}
+  clearTimeout(wsTimer);
+  try { ws = new WebSocket(BASE.replace(/^http/, "ws") + "/ws?clientId=" + clientId); } catch (_) { setConn(false); return; }
+  ws.binaryType = "arraybuffer";
+  ws.onopen = () => { wsAlive = true; setConn(true); };
+  ws.onclose = () => { wsAlive = false; setConn(false); wsTimer = setTimeout(reconnect, 2500); };
+  ws.onmessage = (e) => {
+    const relayOn = Date.now() - lastRelay < 5000;
+    if (typeof e.data !== "string") { if (!relayOn) wsBinary(e.data); return; }
+    let m; try { m = JSON.parse(e.data); } catch (_) { return; }
+    if (m.type === "status" || !relayOn) handle(m.type, m.data);
+  };
+}
+function wsBinary(buf) {
+  const dv = new DataView(buf), kind = dv.getUint32(0);
+  if (kind === 1) { const fmt = dv.getUint32(4); showPreview(new Blob([buf.slice(8)], { type: fmt === 2 ? "image/png" : "image/jpeg" })); }
+  else if (kind === 4) { const len = dv.getUint32(4); let meta = {}; try { meta = JSON.parse(new TextDecoder().decode(buf.slice(8, 8 + len))); } catch (_) {} showPreview(new Blob([buf.slice(8 + len)], { type: meta.image_type || "image/png" })); }
+}
+function setConn(on) {
+  $("#connDot").className = "dot " + (on ? "on" : "bad");
+  $("#connTxt").textContent = on ? "Conectado" : "Sin conexión con ComfyUI";
+}
+let prevUrl;
+function showPreview(blob) {
+  const url = URL.createObjectURL(blob);
+  $("#preview").innerHTML = `<img alt="Vista previa en vivo" src="${url}">`;
+  if (prevUrl) URL.revokeObjectURL(prevUrl); prevUrl = url;
+}
+
+/* ---------- Render: Ahora ---------- */
+const PILL = { run: ["p-run", "Corriendo"], ok: ["p-ok", "Listo"], err: ["p-err", "Error"], cache: ["p-cache", "En caché"], wait: ["p-wait", "Pendiente"] };
+function renderProgress() {
+  const p = live.prog;
+  $("#nowBar").style.width = p && p.m ? (100 * p.v / p.m).toFixed(1) + "%" : (live.done ? "100%" : "0");
+  $("#nowBar").style.background = live.done === "error" ? "var(--err)" : live.done ? "var(--ok)" : "var(--run)";
+  let s = "";
+  if (p && p.m) {
+    const n = live.cur && live.nodes.get(live.cur);
+    const el = n?.t0 ? Date.now() - n.t0 : 0;
+    const per = p.v ? el / p.v : 0;
+    s = `Paso ${p.v} de ${p.m}` + (per ? ` · ${fmtS(Math.round(per))} por paso · faltan ~${fmtS(Math.round(per * (p.m - p.v)))}` : "");
+  }
+  $("#nowSteps").textContent = s;
+}
+function renderNow() {
+  const cur = live.cur && live.nodes.get(live.cur);
+  let head = "Sin trabajo corriendo";
+  if (cur) head = cur.title + (cur.cls && cur.cls !== cur.title ? ` · ${cur.cls}` : "");
+  else if (live.done === "error") head = "Terminó con error";
+  else if (live.done === "interrupted") head = "Interrumpido";
+  else if (live.done) head = "Terminó bien";
+  else if (live.pid) head = "Preparando…";
+  $("#nowNode").textContent = head;
+  $("#nowTime").textContent = live.t0 && live.pid ? "Total " + fmtS(Date.now() - live.t0) : "";
+  renderProgress();
+  $("#nowErr").innerHTML = live.err ? errBox(live.err) : "";
+  const rows = [...live.nodes.values()].filter((n) => n.status !== "wait" || live.prompt);
+  rows.sort((a, b) => (order(a) - order(b)) || ((b.ms || 0) - (a.ms || 0)));
+  $("#nodes").innerHTML = rows.map((n) => {
+    const [c, t] = PILL[n.status];
+    const ms = n.status === "run" && n.t0 ? Date.now() - n.t0 : n.ms;
+    return `<li><span class="pill ${c}">${t}</span><span>${esc(n.title)} <span class="cls">#${esc(n.id)} ${esc(n.cls !== n.title ? n.cls : "")}</span></span><span class="muted">${ms != null ? fmtS(ms) : ""}</span></li>`;
+  }).join("");
+}
+const order = (n) => ({ run: 0, err: 1, ok: 2, cache: 3, wait: 4 }[n.status]);
+setInterval(() => { if (live.pid && !live.done) renderNow(); }, 500);
+
+function errBox(e) {
+  const tb = (e.traceback || []).join("").trim().split("\n").slice(-25).join("\n");
+  return `<div class="err-box"><b>Error en ${esc(e.node_type || "")} (#${esc(e.node_id)})</b><br>${esc(e.exception_type || "")}: ${esc(e.exception_message || "")}${tb ? `<details><summary>Ver detalle técnico</summary><pre>${esc(tb)}</pre></details>` : ""}</div>`;
+}
+
+/* ---------- Historial ---------- */
+let runs = [], selected = store.get("cm_sel", null);
+function parseRun(pid, h) {
+  const prompt = h.prompt?.[2] || {};
+  const msgs = h.status?.messages || [];
+  const ts = (k) => msgs.find((m) => m[0] === k)?.[1]?.timestamp;
+  const start = ts("execution_start"), end = ts("execution_success") ?? ts("execution_error") ?? ts("execution_interrupted");
+  const errMsg = msgs.find((m) => m[0] === "execution_error")?.[1];
+  const outs = [];
+  for (const [nid, o] of Object.entries(h.outputs || {})) for (const v of Object.values(o)) if (Array.isArray(v)) for (const f of v) if (f && f.filename) outs.push({ ...f, node: nid });
+  const status = errMsg ? "error" : h.status?.status_str === "success" ? "ok" : (msgs.some((m) => m[0] === "execution_interrupted") ? "interrupted" : (h.status?.status_str || "—"));
+  return { pid, num: h.prompt?.[0] ?? 0, prompt, start, ms: start && end ? end - start : null, err: errMsg, outs, status, cached: msgs.find((m) => m[0] === "execution_cached")?.[1]?.nodes || [] };
+}
+async function loadHistory() {
+  try {
+    const h = await api("/history?max_items=30");
+    runs = Object.entries(h).map(([k, v]) => parseRun(k, v)).sort((a, b) => b.num - a.num);
+    if (!runs.find((r) => r.pid === selected)) selected = runs[0]?.pid || null;
+    renderRuns(); renderDetail();
+  } catch (e) { $("#runs").innerHTML = `<span class="muted">No pude leer el historial (${esc(e.message)}).</span>`; }
+}
+function renderRuns() {
+  if (!runs.length) { $("#runs").innerHTML = '<span class="muted">Todavía no hay corridas.</span>'; return; }
+  $("#runs").innerHTML = runs.map((r) => {
+    const o = r.outs[0];
+    const th = o ? (isVideo(o.filename) ? `<video class="thumb" src="${viewUrl(o)}" muted preload="metadata"></video>` : `<img class="thumb" loading="lazy" alt="" src="${viewUrl(o)}">`) : `<div class="thumb"></div>`;
+    const [c, t] = r.status === "ok" ? PILL.ok : r.status === "error" ? PILL.err : ["p-wait", r.status === "interrupted" ? "Interrumpido" : r.status];
+    const when = r.start ? new Date(r.start).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "";
+    return `<button class="run ${r.pid === selected ? "sel" : ""}" data-pid="${esc(r.pid)}">${th}<span><b>#${esc(r.num)}</b> <span class="muted">${when} · ${r.outs.length} salida${r.outs.length === 1 ? "" : "s"}</span><br><span class="muted" style="font-size:12px">${esc(keySummary(r))}</span></span><span style="text-align:right"><span class="pill ${c}">${esc(t)}</span><br><span class="muted" style="font-size:12px">${fmtS(r.ms)}</span></span></button>`;
+  }).join("");
+  for (const b of document.querySelectorAll(".run")) b.onclick = () => { selected = b.dataset.pid; store.set("cm_sel", selected); renderRuns(); renderDetail(); };
+}
+
+/* Parámetros: solo los valores escritos (no las conexiones entre nodos) */
+const KEY_CLASS = /KSampler|Sampler|Checkpoint|UNET|Lora|CLIPTextEncode|EmptyLatent|EmptySD3|LoadImage|LoadVideo|VHS|Upscale|ControlNet|IPAdapter|Wan|Hunyuan|LTX|Flux|Guider|Scheduler|Noise|Save|Video/i;
+const KEY_INPUT = /^(seed|noise_seed|steps|cfg|sampler_name|scheduler|denoise|width|height|length|batch_size|frame_rate|fps|text|ckpt_name|unet_name|lora_name|strength_model|strength_clip|image|video|guidance|shift|filename_prefix|upscale_method|strength|weight)$/;
+function params(prompt) {
+  const out = {};
+  for (const [id, n] of Object.entries(prompt)) for (const [k, v] of Object.entries(n.inputs || {})) {
+    if (Array.isArray(v)) continue;
+    out[id + ":" + k] = { id, k, v, title: n._meta?.title || n.class_type, cls: n.class_type, key: KEY_CLASS.test(n.class_type) && KEY_INPUT.test(k) };
+  }
+  return out;
+}
+function keySummary(r) {
+  const p = Object.values(params(r.prompt)).filter((x) => x.key && /seed|steps|cfg|width|height|length/.test(x.k));
+  const pick = {}; for (const x of p) if (!(x.k in pick)) pick[x.k] = x.v;
+  return Object.entries(pick).map(([k, v]) => `${k} ${v}`).join(" · ");
+}
+function diff(a, b) {
+  if (!b) return [];
+  const pa = params(a.prompt), pb = params(b.prompt), out = [];
+  for (const k of new Set([...Object.keys(pa), ...Object.keys(pb)])) {
+    const x = pa[k], y = pb[k];
+    if (JSON.stringify(x?.v) !== JSON.stringify(y?.v)) out.push({ label: `${(x || y).title} → ${(x || y).k}`, before: y?.v, now: x?.v });
+  }
+  const na = Object.keys(a.prompt).length, nb = Object.keys(b.prompt).length;
+  if (na !== nb) out.unshift({ label: "Cantidad de nodos", before: nb, now: na });
+  return out;
+}
+const short = (v) => { const s = typeof v === "string" ? v : JSON.stringify(v); return s == null ? "(no existía)" : s.length > 160 ? s.slice(0, 157) + "…" : s; };
+
+function renderDetail() {
+  const r = runs.find((x) => x.pid === selected); if (!r) { $("#detail").innerHTML = ""; return; }
+  const prev = runs[runs.indexOf(r) + 1];
+  const d = diff(r, prev);
+  const changed = new Set(d.map((x) => x.label));
+  const p = Object.values(params(r.prompt));
+  const keyP = p.filter((x) => x.key), otherP = p.filter((x) => !x.key);
+  const row = (x) => `<tr class="${changed.has(`${x.title} → ${x.k}`) ? "chg" : ""}"><td>${esc(x.title)} <span class="cls">#${esc(x.id)}</span><br>${esc(x.k)}</td><td class="v">${esc(short(x.v))}</td></tr>`;
+  const t = timings[r.pid];
+  $("#detail").innerHTML = `
+    <h3>Corrida #${esc(r.num)} <span class="muted" style="font-weight:400">· ${fmtS(r.ms)}${r.cached.length ? ` · ${r.cached.length} nodos en caché` : ""}</span></h3>
+    ${r.err ? errBox(r.err) : ""}
+    ${r.outs.length ? `<div class="outs">${r.outs.map((o) => `<figure>${isVideo(o.filename) ? `<video src="${viewUrl(o)}" controls loop muted playsinline></video>` : `<a href="${viewUrl(o)}" target="_blank" rel="noopener"><img loading="lazy" alt="${esc(o.filename)}" src="${viewUrl(o)}"></a>`}<figcaption>${esc(o.filename)}</figcaption></figure>`).join("")}</div>` : '<p class="muted">Sin archivos de salida.</p>'}
+    <h3>Qué cambió contra la corrida anterior${prev ? ` (#${esc(prev.num)})` : ""}</h3>
+    ${!prev ? '<p class="muted">No hay corrida anterior para comparar.</p>' : d.length ? `<ul class="diff">${d.map((x) => `<li><b>${esc(x.label)}</b>: <code>${esc(short(x.before))}</code> → <code>${esc(short(x.now))}</code></li>`).join("")}</ul>` : '<p class="muted">Mismos parámetros.</p>'}
+    ${t ? `<h3>Tiempo por nodo</h3><table>${t.filter((n) => n.ms != null).sort((a, b) => b.ms - a.ms).slice(0, 8).map((n) => `<tr><td>${esc(n.title)} <span class="cls">#${esc(n.id)}</span></td><td class="v">${fmtS(n.ms)}</td></tr>`).join("")}</table>` : ""}
+    <h3>Parámetros clave</h3>
+    ${keyP.length ? `<table>${keyP.map(row).join("")}</table>` : '<p class="muted">No reconocí parámetros clave en este flujo.</p>'}
+    <details><summary>Todos los demás valores (${otherP.length})</summary><table>${otherP.map(row).join("")}</table></details>
+    <h3>Qué ves y qué quieres lograr</h3>
+    <textarea id="note" placeholder="Ej.: Lumir cambia de cara entre tomas; quiero que se mueva más y que tenga brillo dorado.">${esc(notes[r.pid] || "")}</textarea>
+    <div class="actions">
+      <button class="primary" id="copyRep">Copiar reporte para Claude</button>
+      <button id="copyWf">Copiar flujo (JSON de la API)</button>
+    </div>`;
+  $("#note").oninput = (e) => { notes[r.pid] = e.target.value; store.set("cm_notes", notes); };
+  $("#copyRep").onclick = () => copy(report(r, prev, d), "Reporte copiado: pégalo en el chat con Claude");
+  $("#copyWf").onclick = () => copy(JSON.stringify(r.prompt, null, 2), "Flujo copiado");
+}
+
+let sys = null;
+function report(r, prev, d) {
+  const dev = sys?.devices?.[0];
+  const L = [];
+  L.push(`## Corrida ComfyUI #${r.num} (${r.pid.slice(0, 8)})`);
+  L.push(`- Estado: ${r.status === "ok" ? "terminó bien" : r.status === "error" ? "ERROR" : r.status} · Duración: ${fmtS(r.ms)}${r.start ? " · " + new Date(r.start).toLocaleString("es-MX") : ""}`);
+  if (dev) L.push(`- Equipo: ${dev.name} · memoria libre ${fmtGB(dev.vram_free)} de ${fmtGB(dev.vram_total)} · ComfyUI ${sys.system?.comfyui_version || "?"}`);
+  L.push(`- Salidas: ${r.outs.map((o) => o.filename).join(", ") || "ninguna"}`);
+  if (r.err) {
+    L.push("", "### Error", `Nodo #${r.err.node_id} ${r.err.node_type}: ${r.err.exception_type}: ${r.err.exception_message}`);
+    const tb = (r.err.traceback || []).join("").trim().split("\n").slice(-15).join("\n");
+    if (tb) L.push("```", tb, "```");
+  }
+  L.push("", "### Parámetros clave");
+  for (const x of Object.values(params(r.prompt)).filter((x) => x.key)) L.push(`- ${x.title} (#${x.id}, ${x.cls}) · ${x.k} = ${short(x.v)}`);
+  L.push("", `### Cambios contra la corrida anterior${prev ? " #" + prev.num : ""}`);
+  if (!prev) L.push("- (no hay anterior)"); else if (!d.length) L.push("- Ninguno"); else for (const x of d) L.push(`- ${x.label}: ${short(x.before)} → ${short(x.now)}`);
+  const t = timings[r.pid];
+  if (t) { L.push("", "### Nodos más lentos"); for (const n of t.filter((n) => n.ms != null).sort((a, b) => b.ms - a.ms).slice(0, 5)) L.push(`- ${n.title} (#${n.id}): ${fmtS(n.ms)}`); }
+  L.push("", "### Lo que veo / lo que quiero", notes[r.pid]?.trim() || "(escribe aquí qué está mal en el resultado)");
+  L.push("", "¿Qué cambio concreto en nodos o parámetros me recomiendas probar primero, y por qué?");
+  return L.join("\n");
+}
+async function copy(text, msg) {
+  try { await navigator.clipboard.writeText(text); toast(msg); }
+  catch (_) { const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast(msg); }
+}
+
+/* ---------- Sistema y cola ---------- */
+async function loadSystem() {
+  try {
+    sys = await api("/system_stats");
+    const d = sys.devices?.[0];
+    if (d) { const used = d.vram_total - d.vram_free; $("#vramChip").textContent = `Memoria: ${fmtGB(used)} / ${fmtGB(d.vram_total)} · ${d.name.split(":").pop().trim()}`; }
+    if (!wsAlive) setConn(true);
+  } catch (_) { if (!wsAlive) setConn(false); }
+}
+let lastRunning = null;
+async function pollQueue() {
+  try {
+    const q = await api("/queue");
+    const running = q.queue_running?.[0]?.[1] || null;
+    $("#queueChip").textContent = `Cola: ${q.queue_running?.length || 0} corriendo · ${q.queue_pending?.length || 0} esperando`;
+    if (running && running !== live.pid && Date.now() - lastRelay > 5000) {
+      await startRun(running);
+      $("#nowNode").textContent = "Corriendo (sin detalle por nodo)";
+    }
+    if (lastRunning && !running) { if (live.pid === lastRunning && !live.done) finishRun("ok"); else loadHistory(); }
+    lastRunning = running;
+  } catch (_) {}
+}
+function refreshAll() { loadSystem(); loadHistory(); pollQueue(); }
+
+$("#interrupt").onclick = async () => { try { await api("/interrupt", { method: "POST" }); toast("Interrupción enviada"); } catch (e) { toast("No se pudo: " + e.message); } };
+$("#free").onclick = async () => { try { await api("/free", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ unload_models: true, free_memory: true }) }); toast("Memoria liberada"); setTimeout(loadSystem, 800); } catch (e) { toast("No se pudo: " + e.message); } };
+
+reconnect(); refreshAll();
+setInterval(pollQueue, 2000); setInterval(loadSystem, 5000);
+</script>
+</body>
+</html>
